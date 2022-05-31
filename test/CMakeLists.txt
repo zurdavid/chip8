@@ -10,7 +10,7 @@ target_link_libraries(catch_main PUBLIC CONAN_PKG::catch2)
 target_link_libraries(catch_main PRIVATE project_options)
 
 add_executable(tests tests.cpp ../src/chip8/Chip8.cpp)
-target_link_libraries(tests PRIVATE project_warnings project_options catch_main)
+target_link_libraries(tests PRIVATE project_warnings project_options catch_main CONAN_PKG::spdlog)
 
 target_include_directories(tests PUBLIC
         ../include

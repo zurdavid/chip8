@@ -62,9 +62,10 @@ TEST_CASE("op_sub")
         REQUIRE(chip8.V[3] == 93);
         REQUIRE(chip8.V[15] == 1);
     }
+
     SECTION("with borrow VF - 0")
     {
-        chip8::Chip8 chip8;
+//        chip8::Chip8 chip8;
 
         chip8.V[3] = 2;
         chip8.V[7] = 4;
@@ -120,28 +121,62 @@ TEST_CASE("op_regload")
 TEST_CASE("load ROM")
 {
     chip8::Chip8 chip8;
-    chip8.load_rom("../../roms/pong.ch8");
+    chip8.load_rom("../../roms/test_program.ch8");
 
-    REQUIRE(chip8.PC == 512);
-    REQUIRE(chip8.memory[0x200] == 0x6A);
-    REQUIRE(chip8.memory[0x200 + 0xF0] == 0x80);
+    REQUIRE(chip8.PC == 0x200);
+    REQUIRE(chip8.memory[0x200] == 0x61);
+    REQUIRE(chip8.memory[0x202] == 0x62);
+    REQUIRE(chip8.memory[0x200 + 0x30] == 0x6c);
+    REQUIRE(chip8.program_size == 51);
 }
 
 
-TEST_CASE("execute cycle")
+TEST_CASE("execute several cycles")
 {
     chip8::Chip8 chip8;
-    chip8.load_rom("../../roms/pong.ch8");
+    chip8.load_rom("../../roms/test_program.ch8");
 
-    chip8.exec_op_cycle();
+    // first two operations create random numbers
+    SECTION("first instruction: set V1 to 4")
+    {
+        chip8.exec_op_cycle();
+        REQUIRE(chip8.V[1] == 0x8);
+    }
 
-    REQUIRE(chip8.PC == 514);
-    REQUIRE(chip8.V[0xA] == 0x02);
+    SECTION("second instruction: set V2 to 8")
+    {
+        chip8.exec_op_cycle();
+        chip8.exec_op_cycle();
+        REQUIRE(chip8.V[2] == 0x8);
+    }
+
+    SECTION("third instruction: set I to 0x230")
+    {
+        chip8.exec_op_cycle();
+        chip8.exec_op_cycle();
+        chip8.exec_op_cycle();
+        REQUIRE(chip8.I == 0x230);
+    }
+
+    SECTION("fourth instruction: draw and erase eagle")
+    {
+        chip8.exec_op_cycle();
+        chip8.exec_op_cycle();
+        chip8.exec_op_cycle();
+        chip8.exec_op_cycle();
+        REQUIRE(chip8.display_buffer[8 * 8 + 1] == 0x6C);
+        REQUIRE(chip8.display_buffer[9 * 8 + 1] == 0x10);
+        REQUIRE(chip8.display_buffer[10 * 8 + 1] == 0x28);
+        chip8.exec_op_cycle();
+        REQUIRE(chip8.display_buffer[8 * 8 + 1] == 0x0);
+        REQUIRE(chip8.display_buffer[9 * 8 + 1] == 0x0);
+        REQUIRE(chip8.display_buffer[10 * 8 + 1] == 0x0);
+    }
+
 }
 
-
 using namespace std::literals::string_view_literals;
-TEST_CASE("some test")
+TEST_CASE("translate to assembler")
 {
     auto opcode = uint16_t{ 0x8235 };
     auto assembler = chip8::op_to_assembler(opcode);
