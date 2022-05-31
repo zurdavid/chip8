@@ -5,7 +5,6 @@
 #include <array>
 #include <string>
 #include <stack>
-#include <random>
 #include <bitset>
 
 namespace chip8 {
@@ -24,9 +23,12 @@ class Chip8 {
     Chip8();
 
     void load_rom(const std::string &path);
-    void exec_op_cycle();
 
+    void exec_op_cycle();
     void signal();
+
+    void tick();
+
     [[nodiscard]] std::array<uint8_t, SCREEN_SIZE> getScreen() const;
     [[nodiscard]] bool game_running() const { return is_running; };
     void pause_unpause() { is_running = !is_running; };
@@ -41,6 +43,7 @@ class Chip8 {
     std::array<bool, 16> keys{};
     // TODO changed from uint64_t, and why is this public ???
     int program_size = 0;
+    int cycles_per_frame = 8;
 
     bool draw_flag = false;
   private:

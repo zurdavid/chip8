@@ -114,7 +114,7 @@ void GUI::display_control_window() {
     ImGui::Text("I: %X (%d)", chip8.getI(), chip8.getI());
 
     ImGui::Text("Number of instruction cycles per frame:");
-    ImGui::SliderInt("cycles/frame:", &cycles_per_frame, 1, 50);
+    ImGui::SliderInt("cycles/frame:", &chip8.cycles_per_frame, 1, 50);
 
     ImGui::Text("DT: %d", chip8.getDT());
     ImGui::SameLine();

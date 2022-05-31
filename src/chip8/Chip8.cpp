@@ -20,6 +20,7 @@ namespace chip8 {
     static constexpr auto F = int{0xF};
     static constexpr auto PROGRAM_START = uint16_t{512};
 
+    // TODO explain this
     static constexpr auto masks = std::array<uint16_t, 16>{
       0xFFFF, 0xF000, 0xF000, 0xF000,
       0xF000, 0xF000, 0xF000, 0xF000,
@@ -80,7 +81,6 @@ namespace chip8 {
 
     void Chip8::exec_op_cycle() {
         const uint16_t opcode = (memory[PC] << 8) | memory[PC + 1];
-//        spdlog::error("opcode: {0:X}", opcode);
         incPC();
         const auto op = fetch_op(opcode);
         std::invoke(op, this, opcode);
@@ -301,17 +301,18 @@ namespace chip8 {
         const auto offset = vx % 8;
 
         bool flipped = false;
-        for (std::weakly_incrementable auto i : std::views::iota(0, N)) {
-            const auto coord1 = byte + (vy + i) * 8;
+        // what is happening here
+        for (std::weakly_incrementable auto line : std::views::iota(0, N)) {
+            const auto coord1 = (byte + (vy + line) * 8) % (8 * 32);
             const auto old = display_buffer[coord1];
-            display_buffer[coord1] = old ^ (memory[I + i] >> offset);
+            display_buffer[coord1] = old ^ (memory[I + line] >> offset);
             if (old & (~display_buffer[coord1])) {
                 flipped = true;
             }
 
-            const auto coord2 = (byte + 1) + (vy + i) * 8;
+            const auto coord2 = ((byte + 1) + (vy + line) * 8) % (8 * 32);
             const auto old2 = display_buffer[coord2];
-            display_buffer[coord2] = old2 ^ (memory[I + i] << (8 - offset));
+            display_buffer[coord2] = old2 ^ (memory[I + line] << (8 - offset));
             if (old2 & (~display_buffer[coord2])) {
                 flipped = true;
             }
@@ -458,5 +459,15 @@ namespace chip8 {
         sound_timer = 0;
     }
 
-    } // namespace chip8
+    void Chip8::tick() {
+        if (game_running()) {
+            signal();
+//            for ([[maybe_unused]] auto i : std::views::iota(0, imgui.get_instructions_per_iteration())) {
+            for ([[maybe_unused]] auto i : std::views::iota(0, cycles_per_frame)) {
+                exec_op_cycle();
+            }
+        }
+    }
+
+} // namespace chip8
 #pragma GCC diagnostic pop

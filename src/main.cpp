@@ -52,12 +52,7 @@ int main() {
         glfwPollEvents();
         handleKeyEvents(window, chip8);
 
-        if (chip8.game_running()) {
-            chip8.signal();
-            for ([[maybe_unused]] auto i : std::views::iota(0, imgui.get_instructions_per_iteration())) {
-                chip8.exec_op_cycle();
-            }
-        }
+        chip8.tick();
 
 //        int clock_rate_ms = (1.0 / 60) * 1000 + 0.5;
 //
@@ -84,8 +79,7 @@ int main() {
         auto Y = 320;
         glViewport(x, y, X, Y);
 
-        // glClearColor(0.0F, 0.5, 0.5, 1.0F);
-        glClearColor(1.0F, 0.0F, 0.0F, 1.0F);
+        glClearColor(0.1F, 0.3, 0.3, 1.0F);
         glClear(GL_COLOR_BUFFER_BIT);
 
 
@@ -130,7 +124,7 @@ GLFWwindow *createWindow(int width, int height) {
     glewExperimental = GLFW_TRUE;
     bool err = glewInit() != GLEW_OK;
     if (err) {
-//        spdlog::error("Failed to initialize GLEW");
+        spdlog::error("Failed to initialize GLEW");
         glfwTerminate();
         return nullptr;
     }
