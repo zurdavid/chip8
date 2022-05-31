@@ -1,0 +1,5 @@
+set( CMAKE_SYSTEM_NAME GCC10 )
+
+set( COMPILER_BIN /usr/local/gcc-10.2.0/bin )
+set( CMAKE_C_COMPILER ${COMPILER_BIN}/gcc-10.2 CACHE PATH "gcc-10" )
+set( CMAKE_CXX_COMPILER ${COMPILER_BIN}/g++-10.2 CACHE PATH "g++-10" )
