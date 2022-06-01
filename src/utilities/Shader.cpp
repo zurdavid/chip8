@@ -1,12 +1,11 @@
 #include <fstream>
-#include <sstream>
-#include <iostream>
 
 #include <GL/glew.h>
 
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
+#include <spdlog/spdlog.h>
 
 #include "utilities/Shader.h"
 
@@ -20,7 +19,7 @@ std::string getShaderSource(const char *shaderPath) {
         file.open(shaderPath);
         ss << file.rdbuf();
     } catch (std::system_error &e) {
-        std::cerr << e.code().message() << '\n' << "Could not open file " << shaderPath << '\n';
+        spdlog::error("Could not open file {} [ {} ]", shaderPath, e.code().message());
     };
     std::string source(ss.str());
     return source;
@@ -38,7 +37,7 @@ unsigned int createVertexShader(const char* vertexShaderSource) {
     glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &success);
     if (!success) {
         glGetShaderInfoLog(vertexShader, 512, nullptr, infoLog);
-        std::cout << "ERROR::SHADER::VERTEX::COMPILATION_FAILED\n" << infoLog << '\n';
+        spdlog::error("ERROR::SHADER::VERTEX::LINKING_FAILED\n {}", infoLog);
     }
     return vertexShader;
 }
@@ -55,7 +54,7 @@ unsigned int createFragmentShader(const char* fragmentShaderSource) {
     glGetShaderiv(fragmentShader, GL_COMPILE_STATUS, &success);
     if (!success) {
         glGetShaderInfoLog(fragmentShader, 512, nullptr, infoLog);
-        std::cout << "ERROR::SHADER::FRAGMENT::COMPILATION_FAILED\n" << infoLog << '\n';
+        spdlog::error("ERROR::SHADER::FRAGMENT::LINKING_FAILED\n {}", infoLog);
     }
     return fragmentShader;
 }
@@ -72,7 +71,7 @@ unsigned int createProgram(unsigned int vertexShader, unsigned int fragmentShade
     glGetProgramiv(shaderProgram, GL_LINK_STATUS, &success);
     if (!success) {
         glGetProgramInfoLog(shaderProgram, 512, nullptr, infoLog);
-        std::cout << "ERROR::SHADER::PROGRAM::LINKING_FAILED\n" << infoLog << '\n';
+        spdlog::error("ERROR::SHADER::PROGRAM::LINKING_FAILED\n {}", infoLog);
     }
     return shaderProgram;
 }

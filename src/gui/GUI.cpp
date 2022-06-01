@@ -1,7 +1,7 @@
 #include <fmt/format.h>
 #include <ranges>
 #include <fstream>
-#include <iostream>
+#include <spdlog/spdlog.h>
 
 #include "gui/GUI.h"
 #include "chip8/InstructionSet.h"
@@ -217,8 +217,7 @@ void GUI::load_rom_readme(const std::string &filepath) {
         ss << readme_file.rdbuf();
         help_text = ss.str();
     } else {
-        // spdlog::error("Could not open file: {}", filename);
-        std::cerr << "Could not open readme-file: " << filepath << '\n';
+        spdlog::info("Could not open readme-file: {}", filepath);
         help_text = "No Readme available!";
     }
 }
