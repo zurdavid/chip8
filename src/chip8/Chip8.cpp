@@ -232,14 +232,6 @@ namespace chip8 {
     }
 
 
-    // Stores the least significant bit of VX in VF and then shifts VX to the right by 1.
-    void Chip8::op_rshift(uint16_t opcode) {
-        const auto x = X(opcode);
-        V[F] = V[x] & 0b1;
-        V[x] >>= 1;
-    }
-
-
     // Sets VX to VY minus VX. VF is set to 0 when there's a borrow, and 1 when there is not.
     void Chip8::op_sub_rev(uint16_t opcode) {
         const auto x = X(opcode);
@@ -250,11 +242,28 @@ namespace chip8 {
     }
 
 
-    // Stores the most significant bit of VX in VF and then shifts VX to the left by 1.
+    // Store the value of register VY shifted right one bit in register VX¹
+    // Set register VF to the least significant bit prior to the shift
+    // VY is unchanged
+    // Changed according to: https://github.com/mattmikolay/chip-8/wiki/CHIP%E2%80%908-Instruction-Set
+    void Chip8::op_rshift(uint16_t opcode) {
+        const auto x = X(opcode);
+        const auto y = Y(opcode);
+        V[F] = V[y] & 0b1;
+        V[x] = V[y] >>= 1;
+    }
+
+
+    // Store the value of register VY shifted left one bit in register VX
+    // Set register VF to the most significant bit prior to the shift
+    // VY is unchanged
+    // Changed according to: https://github.com/mattmikolay/chip-8/wiki/CHIP%E2%80%908-Instruction-Set
     void Chip8::op_lshift(uint16_t opcode) {
         static constexpr auto most_significant_bit_mask = uint16_t{0b10000000};
-        V[F] = V[X(opcode)] & most_significant_bit_mask;
-        V[X(opcode)] <<= 1U;
+        const auto x = X(opcode);
+        const auto y = Y(opcode);
+        V[F] = V[y] & most_significant_bit_mask;
+        V[x] = V[y] << 1U;
     }
 
 
@@ -400,15 +409,21 @@ namespace chip8 {
 
     // FX55 - LD [I], Vx
     // Stores V0 to VX (including VX) in memory starting at address I.
+    // I is set to I + X + 1 after operation --> see https://github.com/mattmikolay/chip-8/wiki/CHIP%E2%80%908-Instruction-Set
     void Chip8::op_regdump(uint16_t opcode) {
-        std::copy_n(V.begin(), X(opcode)+1, memory.begin() + I);
+        const uint16_t x = X(opcode) + 1;
+        std::copy_n(V.begin(), x, memory.begin() + I);
+        I += x;
     }
 
 
     // FX65 - LD Vx, [I]
     // Fills V0 to VX (including VX) with values from memory starting at address I.
+    // I is set to I + X + 1 after operation --> see https://github.com/mattmikolay/chip-8/wiki/CHIP%E2%80%908-Instruction-Set
     void Chip8::op_regload(uint16_t opcode) {
-        std::copy_n(memory.begin() + I, X(opcode)+1, V.begin());
+        const uint16_t x = X(opcode) + 1;
+        std::copy_n(memory.begin() + I, x, V.begin());
+        I += x;
     }
 
 
@@ -462,7 +477,6 @@ namespace chip8 {
     void Chip8::tick() {
         if (game_running()) {
             signal();
-//            for ([[maybe_unused]] auto i : std::views::iota(0, imgui.get_instructions_per_iteration())) {
             for ([[maybe_unused]] auto i : std::views::iota(0, cycles_per_frame)) {
                 exec_op_cycle();
             }
