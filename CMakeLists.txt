@@ -84,9 +84,10 @@ endif()
 
 # ImGUI FILES might have to be copied in there
 add_library(imgui_opengl OBJECT
-        bindings/imgui_impl_glfw.cpp
-        bindings/imgui_impl_opengl3.cpp
+        res/bindings/imgui_impl_glfw.cpp
+        res/bindings/imgui_impl_opengl3.cpp
 )
+
 target_link_libraries(
         imgui_opengl
         CONAN_PKG::glm

@@ -6,8 +6,8 @@
 #include "gui/GUI.h"
 #include "chip8/InstructionSet.h"
 
-#include "../bindings/imgui_impl_glfw.h"
-#include "../bindings/imgui_impl_opengl3.h"
+#include "../res/bindings/imgui_impl_glfw.h"
+#include "../res/bindings/imgui_impl_opengl3.h"
 
 GUI::GUI(GLFWwindow *window, chip8::Chip8 &ch8) : window_(window), chip8(ch8) {
     // Setup Dear ImGui context
