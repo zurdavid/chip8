@@ -248,7 +248,7 @@ namespace chip8 {
     // Changed according to: https://github.com/mattmikolay/chip-8/wiki/CHIP%E2%80%908-Instruction-Set
     void Chip8::op_rshift(uint16_t opcode) {
         const auto x = X(opcode);
-        const auto y = Y(opcode);
+        const auto y = shift_implementation_vy ? Y(opcode) : X(opcode);
         V[F] = V[y] & 0b1;
         V[x] = V[y] >>= 1;
     }
@@ -261,7 +261,7 @@ namespace chip8 {
     void Chip8::op_lshift(uint16_t opcode) {
         static constexpr auto most_significant_bit_mask = uint16_t{0b10000000};
         const auto x = X(opcode);
-        const auto y = Y(opcode);
+        const auto y = shift_implementation_vy ? Y(opcode) : X(opcode);
         V[F] = V[y] & most_significant_bit_mask;
         V[x] = V[y] << 1U;
     }
@@ -483,6 +483,11 @@ namespace chip8 {
 
     void Chip8::toggle_pause() {
         is_running = game_loaded && !is_running;
+    }
+
+
+    void Chip8::set_shift_implementation(bool shift_vy) {
+        shift_implementation_vy = shift_vy;
     }
 
 

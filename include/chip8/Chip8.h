@@ -57,6 +57,20 @@ class Chip8 {
     int cycles_per_frame = 8;
 
     bool draw_flag = false;
+
+    /**
+     * Choose implementation of shift operations
+     *
+     * There are differing interpretations of how the shift operations (8XY6, 8XYE) should be implemented:
+     * either shift the value of register VX or VY. Some Chip8 programs assume one or the other implementation.
+     * This option allows to switch between implementations.
+     *
+     * See: https://github.com/mattmikolay/chip-8/wiki/CHIP%E2%80%908-Instruction-Set
+     *
+     * @param shift_vy If true VY is shifted, otherwise VX.
+     */
+    void set_shift_implementation(bool shift_vy);
+
   private:
     using MFP = void (Chip8::*)(uint16_t);
 
@@ -74,6 +88,8 @@ class Chip8 {
 
     std::array<uint8_t, 8 * 32> display_buffer{};
     std::array<uint8_t, 8 * 32> display_buffer_backup{};
+
+    bool shift_implementation_vy = true;
 
     void reset();
 

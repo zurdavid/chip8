@@ -29,7 +29,8 @@ class GUI {
     bool show_demo_window = false;
     bool show_readme_window = false;
     bool show_debug_window = false;
-    bool show_control_window = false;
+    bool show_control_window = true;
+    bool shift_implementation_vy = true;
 
     std::string game_path{};
 

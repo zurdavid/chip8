@@ -9,6 +9,17 @@
 #include "../res/bindings/imgui_impl_glfw.h"
 #include "../res/bindings/imgui_impl_opengl3.h"
 
+
+// ImGui::Checkbox wrapper function, that calls a function when the checkbox is clicked.
+bool CallBackCheckbox(const char* label, bool* v, auto func) {
+    bool old_val = *v;
+    ImGui::Checkbox(label, v);
+    bool new_val = *v;
+    if (new_val != old_val) func(new_val);
+    return new_val;
+}
+
+
 GUI::GUI(GLFWwindow *window, chip8::Chip8 &ch8) : window_(window), chip8(ch8) {
     // Setup Dear ImGui context
     IMGUI_CHECKVERSION();
@@ -102,6 +113,19 @@ void GUI::display_control_window() {
     // Begin Window
     ImGui::Begin("Chip8-Emulator!");
 
+    ImGui::Text("Options: ");
+
+    ImGui::Text("Number of instruction cycles per frame:");
+    ImGui::SliderInt("cycles/frame:", &chip8.cycles_per_frame, 1, 500);
+
+    CallBackCheckbox(
+        "Shift operations: shift value of register VY",
+        &shift_implementation_vy,
+        [this] (bool v) { this->chip8.set_shift_implementation(v);  }
+    );
+
+    ImGui::Separator(); ImGui::Separator();
+
     if (ImGui::Button(chip8.game_running() ? "Pause" : "Resume")) { chip8.toggle_pause(); }
 
     const auto pc = chip8.getPC();
@@ -112,8 +136,6 @@ void GUI::display_control_window() {
     ImGui::Text("%s", assembler.data());
     ImGui::Text("I: %X (%d)", chip8.getI(), chip8.getI());
 
-    ImGui::Text("Number of instruction cycles per frame:");
-    ImGui::SliderInt("cycles/frame:", &chip8.cycles_per_frame, 1, 50);
 
     ImGui::Text("DT: %d", chip8.getDT());
     ImGui::SameLine();
@@ -125,6 +147,8 @@ void GUI::display_control_window() {
     }
 
     if (ImGui::Button("Execute instruction")) { chip8.exec_op_cycle(); }
+
+    ImGui::Separator();
 
     ImGui::Text("Application average %.3f ms/frame (%.1f FPS)",
       static_cast<double>(1000.0F / ImGui::GetIO().Framerate),
