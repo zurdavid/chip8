@@ -8,5 +8,5 @@ void main()
 {
     vec4 color = texture(Texture, TexCoord);
     float on = color.r;
-    FragColor = on * vec4(0.7, 0.8, 0.9, 1.0) + 0.1;
+    FragColor = on * vec4(0.7 * TexCoord.x, 0.8 * TexCoord.y, 0.9, 1.0) + 0.1;
 }
