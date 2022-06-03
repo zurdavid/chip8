@@ -74,7 +74,6 @@ int main() {
     while (!glfwWindowShouldClose(window)) {
         // Poll and handle events (inputs, window_ resize, etc.)
         glfwPollEvents();
-        handleKeyEvents(window, chip8);
         chip8.tick();
         imgui.build_context();
 
@@ -140,26 +139,7 @@ GLFWwindow *createWindow(int width, int height) {
 }
 
 
-void handleKeyEvents(GLFWwindow *window, chip8::Chip8 &chip8){
-    // TODO remove
-    if (glfwGetKey(window, GLFW_KEY_ENTER) == GLFW_PRESS) {
-        chip8.exec_op_cycle(); }
-
-//    static constexpr std::array keybindings{
-//            GLFW_KEY_M,                             // 0
-//            GLFW_KEY_7, GLFW_KEY_8, GLFW_KEY_9,     // 1 2 3
-//            GLFW_KEY_Y, GLFW_KEY_U, GLFW_KEY_I,     // 4 5 6
-//            GLFW_KEY_H, GLFW_KEY_J, GLFW_KEY_K,     // 7 8 9
-//            GLFW_KEY_N, GLFW_KEY_COMMA, GLFW_KEY_0, // A B C
-//            GLFW_KEY_O, GLFW_KEY_L, GLFW_KEY_PERIOD // D E F
-//    };
-//
-//    for (size_t key = 0; key < keybindings.size(); key++) {
-//        chip8.keys[key] = glfwGetKey(window, keybindings[key]) == GLFW_PRESS;
-//    }
-}
-
-void load_texture(const chip8::Chip8 &chip8, Chip8Texture &texture) {
+void load_texture(const chip8::Chip8 &chip8, [[maybe_unused]] Chip8Texture &texture) {
     static constexpr int texture_width = chip8::Chip8::SCREEN_WIDTH;
     static constexpr int texture_height = chip8::Chip8::SCREEN_HEIGHT;
     Chip8Texture texture_data = chip8.getScreen();
