@@ -436,14 +436,20 @@ namespace chip8 {
     }
 
 
-    std::array<uint8_t, Chip8::SCREEN_WIDTH * Chip8::SCREEN_HEIGHT> Chip8::getScreen() const {
-      std::array<uint8_t, 64 * 32> screen{0};
+    std::array<uint8_t, Chip8::SCREEN_SIZE> Chip8::getScreen() const {
+      std::array<uint8_t, Chip8::SCREEN_SIZE> screen{0};
+
+      // for_each byte of the display_buffer
+      // set 8 fields of the screen array
       std::for_each(
-        display_buffer.rbegin(), display_buffer.rend(), [&screen, idx = int{0}](uint8_t byte) mutable {
-        std::bitset<8> bits{byte};
-        for(int i = 0; i < 8; i++) {
-          screen[idx++] = bits[i] ? 255 : 0;
-        }
+        display_buffer.rbegin(), display_buffer.rend(),
+
+        [&screen, idx = int{0}](uint8_t byte) mutable {
+            std::bitset<8> bitIsSet{byte};
+            for(int i = 0; i < 8; i++) {
+              screen[idx] = bitIsSet[i] ? 0xFF : 0x0;
+              idx++;
+            }
       });
       return screen;
     }

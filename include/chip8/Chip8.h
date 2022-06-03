@@ -29,6 +29,13 @@ class Chip8 {
 
     void tick();
 
+    /**
+     * Get the Chip8 display buffer as a continuous array of size SCREEN_SIZE,
+     * with a field for every pixel of the Chip8 display. If a pixel is set,
+     * the corresponding array field is set to 0xFF otherwise to 0x00.
+     *
+     * @return Chip8 display as an array
+     */
     [[nodiscard]] std::array<uint8_t, SCREEN_SIZE> getScreen() const;
     [[nodiscard]] bool game_running() const { return is_running; };
     void pause_unpause() { is_running = !is_running; };
