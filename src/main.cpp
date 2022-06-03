@@ -27,7 +27,7 @@ static void key_callback(GLFWwindow* window, int key, int , int action, int)
 {
     auto* chip8 = static_cast<chip8::Chip8*>(glfwGetWindowUserPointer(window));
     if (key == GLFW_KEY_SPACE && action == GLFW_PRESS) {
-        chip8->pause_unpause();
+        chip8->toggle_pause();
     }
     static constexpr std::array keybindings{
         GLFW_KEY_M,                             // 0

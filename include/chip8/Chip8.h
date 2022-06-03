@@ -38,7 +38,11 @@ class Chip8 {
      */
     [[nodiscard]] std::array<uint8_t, SCREEN_SIZE> getScreen() const;
     [[nodiscard]] bool game_running() const { return is_running; };
-    void pause_unpause() { is_running = !is_running; };
+
+    /**
+     * Pause or unpause a running Chip8 program.
+     */
+    void toggle_pause();
 
     // TODO consistent naming
     [[nodiscard]] uint16_t getPC() const { return PC; }
@@ -57,6 +61,7 @@ class Chip8 {
     using MFP = void (Chip8::*)(uint16_t);
 
     bool is_running = false;
+    bool game_loaded = false;
 
     uint16_t PC = PC_START_ADDRESS;
     uint16_t I = 0;

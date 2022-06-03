@@ -102,8 +102,7 @@ void GUI::display_control_window() {
     // Begin Window
     ImGui::Begin("Chip8-Emulator!");
 
-    // TODO crashes if no program is loaded
-    if (ImGui::Button(chip8.game_running() ? "Pause" : "Resume")) { chip8.pause_unpause(); }
+    if (ImGui::Button(chip8.game_running() ? "Pause" : "Resume")) { chip8.toggle_pause(); }
 
     const auto pc = chip8.getPC();
     ImGui::Text("PC: %X (%d)", pc, pc);

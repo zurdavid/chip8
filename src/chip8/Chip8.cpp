@@ -480,6 +480,12 @@ namespace chip8 {
         sound_timer = 0;
     }
 
+
+    void Chip8::toggle_pause() {
+        is_running = game_loaded && !is_running;
+    }
+
+
     void Chip8::tick() {
         if (game_running()) {
             signal();
