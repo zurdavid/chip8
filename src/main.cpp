@@ -59,7 +59,7 @@ int main() {
     const auto canvas = Canvas{};
     chip8::Chip8 chip8;
 
-    auto chip8_texture = chip8.getScreen();
+    auto chip8_texture = chip8.get_screen();
     create_texture();
     load_texture(chip8, chip8_texture);
 
@@ -142,7 +142,7 @@ GLFWwindow *createWindow(int width, int height) {
 void load_texture(const chip8::Chip8 &chip8, [[maybe_unused]] Chip8Texture &texture) {
     static constexpr int texture_width = chip8::Chip8::SCREEN_WIDTH;
     static constexpr int texture_height = chip8::Chip8::SCREEN_HEIGHT;
-    Chip8Texture texture_data = chip8.getScreen();
+    Chip8Texture texture_data = chip8.get_screen();
 
     // TODO does not work properly
     std::transform(begin(texture), end(texture), begin(texture_data), begin(texture),

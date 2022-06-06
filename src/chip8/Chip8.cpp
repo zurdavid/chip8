@@ -436,7 +436,7 @@ namespace chip8 {
     }
 
 
-    std::array<uint8_t, Chip8::SCREEN_SIZE> Chip8::getScreen() const {
+    std::array<uint8_t, Chip8::SCREEN_SIZE> Chip8::get_screen() const {
       std::array<uint8_t, Chip8::SCREEN_SIZE> screen{0};
 
       // for_each byte of the display_buffer

@@ -36,7 +36,7 @@ class Chip8 {
      *
      * @return Chip8 display as an array
      */
-    [[nodiscard]] std::array<uint8_t, SCREEN_SIZE> getScreen() const;
+    [[nodiscard]] std::array<uint8_t, SCREEN_SIZE> get_screen() const;
     [[nodiscard]] bool game_running() const { return is_running; };
 
     /**
