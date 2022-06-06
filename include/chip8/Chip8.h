@@ -9,6 +9,7 @@
 
 namespace chip8 {
 
+enum class State{ Running, Paused, Reset, Empty };
 
 class Chip8 {
   public:
@@ -37,7 +38,7 @@ class Chip8 {
      * @return Chip8 display as an array
      */
     [[nodiscard]] std::array<uint8_t, SCREEN_SIZE> get_screen() const;
-    [[nodiscard]] bool game_running() const { return is_running; };
+    [[nodiscard]] bool game_running() const { return state == State::Running; };
 
     /**
      * Pause or unpause a running Chip8 program.
@@ -74,8 +75,7 @@ class Chip8 {
   private:
     using MFP = void (Chip8::*)(uint16_t);
 
-    bool is_running = false;
-    bool game_loaded = false;
+    State state = State::Empty;
 
     uint16_t PC = PC_START_ADDRESS;
     uint16_t I = 0;
@@ -92,6 +92,7 @@ class Chip8 {
     bool shift_implementation_vy = true;
 
     void reset();
+    void error();
 
     [[nodiscard]] static MFP fetch_op(uint16_t opcode);
     void incPC();
