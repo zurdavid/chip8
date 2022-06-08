@@ -302,8 +302,8 @@ namespace chip8 {
     // As described above, VF is set to 1 if any screen pixels are flipped
     // from set to unset when the sprite is drawn, and to 0 if that does not happen
     void Chip8::op_draw(uint16_t opcode) {
-        const auto vx = V[X(opcode)];
-        const auto vy = V[Y(opcode)];
+        const auto vx = V[X(opcode)] % SCREEN_WIDTH;
+        const auto vy = V[Y(opcode)] % SCREEN_HEIGHT;
         const auto N = static_cast<int>(n(opcode));
 
         const auto byte = vx / 8;
@@ -312,17 +312,19 @@ namespace chip8 {
         bool flipped = false;
         // what is happening here
         for (std::weakly_incrementable auto line : std::views::iota(0, N)) {
-            const auto coord1 = (byte + (vy + line) * 8) % (8 * 32);
-            const auto old = display_buffer[coord1];
-            display_buffer[coord1] = old ^ (memory[I + line] >> offset);
-            if (old & (~display_buffer[coord1])) {
+            const auto sprite_line = memory[I + line];
+
+            const uint8_t left_byte_idx = (byte + (vy + line) * 8);
+            const auto old_left = display_buffer[left_byte_idx];
+            display_buffer[left_byte_idx] = old_left ^ (sprite_line >> offset);
+            if (old_left & (~display_buffer[left_byte_idx])) {
                 flipped = true;
             }
 
-            const auto coord2 = ((byte + 1) + (vy + line) * 8) % (8 * 32);
-            const auto old2 = display_buffer[coord2];
-            display_buffer[coord2] = old2 ^ (memory[I + line] << (8 - offset));
-            if (old2 & (~display_buffer[coord2])) {
+            const uint8_t right_byte_idx = (byte + 1) % 8 + (vy + line) * 8;
+            const auto old_right = display_buffer[right_byte_idx];
+            display_buffer[right_byte_idx] = old_right ^ (sprite_line << (8 - offset));
+            if (old_right & (~display_buffer[right_byte_idx])) {
                 flipped = true;
             }
         }
