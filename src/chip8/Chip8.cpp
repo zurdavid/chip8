@@ -364,6 +364,7 @@ namespace chip8 {
         for (int key_idx = 0; auto key_pressed : keys) {
             if (key_pressed) {
                 V[X(opcode)] = static_cast<uint8_t >(key_idx);
+                keys[key_idx] = false;
                 return;
             }
             key_idx++;
