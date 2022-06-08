@@ -20,14 +20,6 @@ namespace chip8 {
     static constexpr auto F = int{0xF};
     static constexpr auto PROGRAM_START = uint16_t{512};
 
-    // TODO explain this
-    static constexpr auto masks = std::array<uint16_t, 16>{
-      0xFFFF, 0xF000, 0xF000, 0xF000,
-      0xF000, 0xF000, 0xF000, 0xF000,
-      0xF00F, 0xF000, 0xF000, 0xF000,
-      0xF000, 0xF000, 0xF0FF, 0xF0FF
-    };
-
     // sprites
     static constexpr std::array<uint8_t, 80> fontset = {{
             0xF0, 0x90, 0x90, 0x90, 0xF0,  // 0
@@ -431,7 +423,16 @@ namespace chip8 {
 
 
     Chip8::MFP Chip8::fetch_op(uint16_t opcode) {
+        // masks is used to hide the variable parts of opcodes, so the opcode can be
+        // looked up in operations
+        static constexpr auto masks = std::array<uint16_t, 16>{
+                0xFFFF, 0xF000, 0xF000, 0xF000,
+                0xF000, 0xF000, 0xF000, 0xF000,
+                0xF00F, 0xF000, 0xF000, 0xF000,
+                0xF000, 0xF000, 0xF0FF, 0xF0FF
+        };
         static constexpr auto map = Map<uint16_t, MFP, operations.size()>{{operations}};
+
         const auto idx = get4Bit(opcode, 12);
         const auto mask = masks[idx];
         const auto op = map.at(opcode & mask);
