@@ -72,6 +72,9 @@ namespace chip8 {
         incPC();
         const auto op = fetch_op(opcode);
         std::invoke(op, this, opcode);
+        call_stack.push_front(opcode);
+        if (call_stack.size() > CALL_STACK_SIZE) call_stack.pop_back();
+        tick_count++;
     }
 
 
@@ -499,6 +502,9 @@ namespace chip8 {
         stack = {};
         delay_timer = 0;
         sound_timer = 0;
+
+        tick_count = 0;
+        call_stack.clear();
     }
 
 

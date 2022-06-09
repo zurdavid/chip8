@@ -20,6 +20,7 @@ class Chip8 {
     static constexpr auto N_REGISTERS = 16;
     static constexpr auto PC_START_ADDRESS = 512;
     static constexpr auto N_OPCODES = 34;
+    static constexpr auto CALL_STACK_SIZE = 40;
 
     Chip8();
 
@@ -45,12 +46,13 @@ class Chip8 {
      */
     void toggle_pause();
 
-    // TODO consistent naming
-    [[nodiscard]] uint16_t getPC() const { return PC; }
-    [[nodiscard]] uint16_t getI() const { return I; }
-    [[nodiscard]] uint16_t getDT() const { return delay_timer; }
+    [[nodiscard]] uint16_t get_pc() const { return PC; }
+    [[nodiscard]] uint16_t get_i() const { return I; }
+    [[nodiscard]] uint16_t get_delay_timer() const { return delay_timer; }
+    [[nodiscard]] uint16_t get_tick_count() const { return tick_count; }
     [[nodiscard]] const std::array<uint8_t, MEMSIZE> &get_memory() const { return memory; }
     [[nodiscard]] const std::array<uint8_t, N_REGISTERS> &get_registers() const { return V; }
+    [[nodiscard]] const std::deque<uint16_t> &get_call_stack() const { return call_stack; }
 
     std::array<bool, 16> keys{};
     // TODO changed from uint64_t, and why is this public ???
@@ -90,6 +92,8 @@ class Chip8 {
     std::array<uint8_t, 8 * 32> display_buffer_backup{};
 
     bool shift_implementation_vy = true;
+    std::deque<uint16_t> call_stack;
+    int tick_count = 0;
 
     void reset();
     void error();
