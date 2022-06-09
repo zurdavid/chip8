@@ -216,7 +216,7 @@ namespace chip8 {
         const auto y = Y(opcode);
         const auto vx = V[x];
         V[x] -= V[y];
-        V[F] = vx > V[x];
+        V[F] = vx >= V[x];
     }
 
 
@@ -226,7 +226,7 @@ namespace chip8 {
         const auto y = Y(opcode);
         const auto vy = V[y];
         V[x] = V[y] - V[x];
-        V[F] = vy > V[x];
+        V[F] = vy >= V[x];
     }
 
 
