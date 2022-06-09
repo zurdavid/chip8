@@ -322,7 +322,7 @@ namespace chip8 {
 
     // Skips the next instruction if the key stored in VX is pressed.
     void Chip8::op_keyop1(uint16_t opcode) {
-        auto vx = V[X(opcode)];
+        const auto vx = get4Bit(V[X(opcode)], 0);
         if (keys[vx]) {
             incPC();
         }
@@ -331,7 +331,7 @@ namespace chip8 {
 
     // Skips the next instruction if the key stored in VX is not pressed.
     void Chip8::op_keyop2(uint16_t opcode) {
-        auto vx = V[X(opcode)];
+        const auto vx = get4Bit(V[X(opcode)], 0);
         if (!keys[vx]) {
             incPC();
         }
@@ -345,7 +345,8 @@ namespace chip8 {
 
 
     // A key press is awaited, and then stored in VX.
-    // (Blocking Operation. All instruction halted until next key event)
+    // (should be a blocking operation. All instruction halted until next key event)
+    // This implementations only simulates a blocking by not increasing the PC
     void Chip8::op_get_key(uint16_t opcode) {
         // check all keys
         for (int key_idx = 0; auto key_pressed : keys) {
@@ -382,7 +383,7 @@ namespace chip8 {
 
     // 0xFX29 - Set I = location of sprite for digit Vx.
     void Chip8::op_set_I_to_sprite_address(uint16_t opcode) {
-        I = SIZEOFSPRITE * V[X(opcode)];
+        I = SIZEOFSPRITE * get4Bit(V[X(opcode)], 0);
     }
 
 
