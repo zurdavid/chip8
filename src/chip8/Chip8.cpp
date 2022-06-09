@@ -238,7 +238,7 @@ namespace chip8 {
         const auto x = X(opcode);
         const auto y = shift_implementation_vy ? Y(opcode) : X(opcode);
         V[F] = V[y] & 0b1;
-        V[x] = V[y] >>= 1;
+        V[x] = V[y] >> 1;
     }
 
 
@@ -247,10 +247,9 @@ namespace chip8 {
     // VY is unchanged
     // Changed according to: https://github.com/mattmikolay/chip-8/wiki/CHIP%E2%80%908-Instruction-Set
     void Chip8::op_lshift(uint16_t opcode) {
-        static constexpr auto most_significant_bit_mask = uint16_t{0b10000000};
         const auto x = X(opcode);
         const auto y = shift_implementation_vy ? Y(opcode) : X(opcode);
-        V[F] = V[y] & most_significant_bit_mask;
+        V[F] = V[y] >> 7;
         V[x] = V[y] << 1U;
     }
 
