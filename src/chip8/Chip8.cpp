@@ -9,10 +9,6 @@
 
 #include <spdlog/spdlog.h>
 
-// /TODO maybe delete
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wconversion"
-#pragma GCC diagnostic ignored "-Wsign-conversion"
 
 namespace chip8 {
 
@@ -572,4 +568,3 @@ namespace chip8 {
 
 
 } // namespace chip8
-#pragma GCC diagnostic pop
