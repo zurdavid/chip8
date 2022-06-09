@@ -276,8 +276,8 @@ namespace chip8 {
 
     // Sets VX to the result of a bitwise and operation on a random number (Typically: 0 to 255) and NN.
     void Chip8::op_and_rand(uint16_t opcode) {
-        std::uniform_int_distribution<uint8_t> distrib(0, 255);
-        const auto random_number = distrib(random_generator);
+        std::uniform_int_distribution<int> distrib(0, 255);
+        const uint8_t random_number = distrib(random_generator);
         const auto val = nn(opcode);
         V[X(opcode)] = random_number & val;
     }
