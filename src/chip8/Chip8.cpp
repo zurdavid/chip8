@@ -57,17 +57,17 @@ namespace chip8 {
     void Chip8::load_rom(const std::string &filename) {
         std::ifstream rom_file(filename);
         if (rom_file) {
-          rom_file >> std::noskipws;
-          std::vector<uint8_t> v((std::istream_iterator<uint8_t>(rom_file)),
+            rom_file >> std::noskipws;
+            std::vector<uint8_t> v((std::istream_iterator<uint8_t>(rom_file)),
                                  (std::istream_iterator<uint8_t>()));
-          std::copy(v.begin(), v.end(), memory.begin() + PROGRAM_START);
-          program_size = v.size();
+            std::copy(v.begin(), v.end(), memory.begin() + PROGRAM_START);
+            program_size = v.size();
+            reset();
+            draw_flag = true;
         } else {
-          spdlog::error("Could not open file: {}", filename);
+            // TODO give user error message
+            spdlog::error("Could not open file: {}", filename);
         }
-        reset();
-
-        draw_flag = true;
     }
 
 
