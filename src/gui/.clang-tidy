@@ -1,0 +1,7 @@
+InheritParentConfig: true
+# The ImGui API uses C-Style vararg functions.
+Checks: "
+          -cppcoreguidelines-pro-type-vararg,
+          -hicpp-vararg,
+        "
+

@@ -1,0 +1,7 @@
+InheritParentConfig: true
+# all the magic numbers should be obvious -> like 0xFF
+Checks: "
+        -hicpp-signed-bitwise,
+        -cppcoreguidelines-avoid-magic-numbers, 
+        -readability-magic-numbers
+        "

@@ -1,0 +1,32 @@
+# Chip8 is a virtual machine designed in 1977 for programming video games.
+# Octo is a high level assembler, disassembler and simulator for Chip8.
+
+:alias px v1
+:alias py v2
+
+: main
+  px := 8
+  py := 8
+  i  := eagle
+  sprite px py 3
+
+  loop
+    # erase the player, update its position and then redraw:
+    sprite px py 3
+    v0 := OCTO_KEY_W if v0 key then py += -1
+    v0 := OCTO_KEY_S if v0 key then py +=  1
+    v0 := OCTO_KEY_A if v0 key then px += -1
+    v0 := OCTO_KEY_D if v0 key then px +=  1
+    sprite px py 3
+
+    # lock the framerate of this program via the delay timer:
+    loop
+      vf := delay
+      if vf != 0 then
+    again
+    vf := 3
+    delay := vf
+  again
+
+: eagle
+  0x6C 0x10 0x28

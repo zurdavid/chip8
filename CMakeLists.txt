@@ -1,105 +1,63 @@
-cmake_minimum_required(VERSION 3.15)
+cmake_minimum_required(VERSION 3.16)
 
-# Set the project name to your project name, my project isn't very descriptive
-project(chip8 CXX)
-#set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-include(cmake/StandardProjectSettings.cmake)
-include(cmake/PreventInSourceBuilds.cmake)
+set(CMAKE_CXX_STANDARD 20)
 
-# Link this 'library' to set the c++ standard / compile-time options requested
-add_library(project_options INTERFACE)
-target_compile_features(project_options INTERFACE cxx_std_20)
-
-if(CMAKE_CXX_COMPILER_ID MATCHES ".*Clang")
-  option(ENABLE_BUILD_WITH_TIME_TRACE "Enable -ftime-trace to generate time tracing .json files on clang" OFF)
-  if(ENABLE_BUILD_WITH_TIME_TRACE)
-    add_compile_definitions(project_options INTERFACE -ftime-trace)
-  endif()
-endif()
-
-# Link this 'library' to use the warnings specified in CompilerWarnings.cmake
-add_library(project_warnings INTERFACE)
-
-# enable cache system
-include(cmake/Cache.cmake)
-
-# standard compiler warnings
-include(cmake/CompilerWarnings.cmake)
-set_project_warnings(project_warnings)
-
-# sanitizer options if supported by compiler
-# include(cmake/Sanitizers.cmake)
-# enable_sanitizers(project_options)
-
-# enable doxygen
-# include(cmake/Doxygen.cmake)
-# enable_doxygen()
-
-# allow for static analysis options
-# include(cmake/StaticAnalyzers.cmake)
-
-option(BUILD_SHARED_LIBS "Enable compilation of shared libraries" OFF)
-option(ENABLE_TESTING "Enable Test Builds" OFF)
-option(ENABLE_FUZZING "Enable Fuzzing Builds" OFF)
-
-# Very basic PCH example
-option(ENABLE_PCH "Enable Precompiled Headers" OFF)
-if(ENABLE_PCH)
-  # This sets a global PCH parameter, each project will build its own PCH, which is a good idea if any #define's change
-  #
-  # consider breaking this out per project as necessary
-  target_precompile_headers(
-    project_options
-    INTERFACE
-    <vector>
-    <string>
-    <map>
-    <utility>)
-endif()
-
-# Set up some extra Conan dependencies based on our needs before loading Conan
-set(CONAN_EXTRA_REQUIRES "")
-set(CONAN_EXTRA_OPTIONS "")
-
-set(CONAN_EXTRA_REQUIRES
-        ${CONAN_EXTRA_REQUIRES} imgui/1.82 glfw/3.3.2 glew/2.1.0 glm/0.9.9.8)
+# Add project_options v0.22.4
+# https://github.com/aminya/project_options
+include(FetchContent)
+FetchContent_Declare(_project_options URL https://github.com/aminya/project_options/archive/refs/tags/v0.22.4.zip)
+FetchContent_MakeAvailable(_project_options)
+include(${_project_options_SOURCE_DIR}/Index.cmake)
 
 
-  # set(CONAN_EXTRA_OPTIONS ${CONAN_EXTRA_OPTIONS} sfml:shared=False sfml:graphics=True sfml:audio=False
-  # sfml:window_=True libalsa:disable_python=True)
+set(ENABLE_DEVELOPER_MODE
+        TRUE
+        CACHE BOOL "Enable 'developer mode'")
 
-include(cmake/Conan.cmake)
-run_conan()
+# Change this to false if you want to disable warnings_as_errors in developer mode
+set(OPT_WARNINGS_AS_ERRORS_DEVELOPER_DEFAULT TRUE)
 
-if(ENABLE_TESTING)
-  enable_testing()
-  message("Building Tests. Be sure to check out test/constexpr_tests for constexpr testing")
-  add_subdirectory(test)
-endif()
+# install vcpkg dependencies: - should be called before defining project()
+# run_vcpkg()
 
-if(ENABLE_FUZZING)
-  message("Building Fuzz Tests, using fuzzing sanitizer https://www.llvm.org/docs/LibFuzzer.html")
-  add_subdirectory(fuzz_test)
-endif()
+set(ENABLE_CACHE ON)
 
-# ImGUI FILES might have to be copied in there
-add_library(imgui_opengl OBJECT
-        res/bindings/imgui_impl_glfw.cpp
-        res/bindings/imgui_impl_opengl3.cpp
+# Set the project name and language
+project(
+        chip8
+        VERSION 0.0.1
+        DESCRIPTION "A Chip8 emulator"
+        LANGUAGES CXX)
+
+include(${_project_options_SOURCE_DIR}/src/DynamicProjectOptions.cmake)
+dynamic_project_options(
+        # Note: PCH is disabled by default in developer mode because these headers become
+        # globally included and they can mask other errors
+        PCH_HEADERS
+        <vector>
+        <array>
+        <string>
+        <spdlog/spdlog.h>
+        ENABLE_CONAN
+        CPPCHECK_OPTIONS
+        --enable=style,performance,warning,portability
+        --inline-suppr
+        # We cannot act on a bug/missing feature of cppcheck
+        --suppress=cppcheckError
+        --suppress=internalAstError
+        # if a file does not have an internalAstError, we get an unmatchedSuppression error
+        --suppress=unmatchedSuppression
+        --suppress=passedByValue
+        --suppress=syntaxError
+        --suppress=clang-diagnostic-keyword-macro
+        --inconclusive
 )
 
-target_link_libraries(
-        imgui_opengl
-        CONAN_PKG::glm
-        CONAN_PKG::imgui
-        CONAN_PKG::glfw
-        CONAN_PKG::glew
-)
-
+add_subdirectory(lib)
 add_subdirectory(src)
+add_subdirectory(test)
 
-option(ENABLE_UNITY "Enable Unity builds of projects" OFF)
-if(ENABLE_UNITY)
-  # Add for any project you want to apply unity builds for
-  set_target_properties(intro PROPERTIES UNITY_BUILD ON)
-endif()
+add_custom_target(link_target ALL
+        COMMAND ${CMAKE_COMMAND} -E create_symlink ${CMAKE_SOURCE_DIR}/res ${CMAKE_BINARY_DIR}/bin/res
+        COMMAND ${CMAKE_COMMAND} -E create_symlink ${CMAKE_SOURCE_DIR}/test/test_roms ${CMAKE_BINARY_DIR}/test/test_roms
+        COMMAND ${CMAKE_COMMAND} -E create_symlink ${CMAKE_SOURCE_DIR}/roms ${CMAKE_BINARY_DIR}/bin/roms)

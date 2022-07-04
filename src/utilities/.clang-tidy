@@ -1,0 +1,4 @@
+# Disable low level checks, because these classes interact
+# with the OpenGL API
+# InheritParentConfig: false
+Checks: cppcoreguidelines-avoid-goto

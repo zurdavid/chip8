@@ -7,18 +7,21 @@
 #include <GLFW/glfw3.h>
 
 #include "chip8/Chip8.h"
-#include "imgui.h"
-#include "lib/imfilebrowser.h"
+#include <imgui.h>
+#include <imfilebrowser.h>
 
 class GUI {
   public:
-    GUI(GLFWwindow *window, chip8::Chip8& chip8);
+    GUI(GLFWwindow *window, chip8::Chip8& t_chip8);
     void build_context();
-    void render();
+    static void render();
     [[nodiscard]] int get_instructions_per_iteration() const { return cycles_per_frame; }
 
-    void cleanup();
-
+    ~GUI();
+    GUI(const GUI&) = delete;
+    GUI(GUI&&) = delete;
+    GUI& operator=(const GUI&) = delete;
+    GUI& operator=(GUI&&) = delete;
   private:
     GLFWwindow *window_;
     chip8::Chip8& chip8;
@@ -28,20 +31,18 @@ class GUI {
 
     bool show_demo_window = false;
     bool show_readme_window = false;
-    bool show_debug_window = false;
-    bool show_control_window = true;
+    bool show_settings_window = true;
+    bool show_control_window = false;
     bool shift_implementation_vy = true;
 
     std::string game_path{};
 
     std::string help_text{};
     void display_menubar();
+    void display_settings_window();
     void display_control_window();
-    void display_memory_map();
     void display_readme();
     void load_rom_readme(const std::string &filepath);
-
-    void display_program_code();
 };
 
 

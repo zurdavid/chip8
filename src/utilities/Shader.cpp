@@ -32,9 +32,9 @@ unsigned int createVertexShader(const char* vertexShaderSource) {
     glCompileShader(vertexShader);
 
     int success;
-    char infoLog[512];
     glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &success);
     if (!success) {
+        char infoLog[512];
         glGetShaderInfoLog(vertexShader, 512, nullptr, infoLog);
         spdlog::error("ERROR::SHADER::VERTEX::LINKING_FAILED\n {}", infoLog);
     }
@@ -49,9 +49,9 @@ unsigned int createFragmentShader(const char* fragmentShaderSource) {
     glCompileShader(fragmentShader);
 
     int success;
-    char infoLog[512];
     glGetShaderiv(fragmentShader, GL_COMPILE_STATUS, &success);
     if (!success) {
+        char infoLog[512];
         glGetShaderInfoLog(fragmentShader, 512, nullptr, infoLog);
         spdlog::error("ERROR::SHADER::FRAGMENT::LINKING_FAILED\n {}", infoLog);
     }
@@ -66,9 +66,9 @@ unsigned int createProgram(unsigned int vertexShader, unsigned int fragmentShade
     glLinkProgram(shaderProgram);
 
     int success;
-    char infoLog[512];
     glGetProgramiv(shaderProgram, GL_LINK_STATUS, &success);
     if (!success) {
+        char infoLog[512];
         glGetProgramInfoLog(shaderProgram, 512, nullptr, infoLog);
         spdlog::error("ERROR::SHADER::PROGRAM::LINKING_FAILED\n {}", infoLog);
     }

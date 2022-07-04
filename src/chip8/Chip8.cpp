@@ -2,19 +2,23 @@
 #include <fstream>
 #include <iterator>
 #include <random>
+#include <algorithm>
 #include <bitset>
-#include <ranges>
 #include <functional>
+#include <gsl/narrow>
 #include "utilities/Map.h"
-
+#include <ranges>
 #include <spdlog/spdlog.h>
 
 
 namespace chip8 {
+    namespace ranges = std::ranges;
 
-    static constexpr auto SIZEOFSPRITE = int{5};
+    static constexpr auto sprite_size = int{5};
+    static constexpr auto bytes_in_screen = 8 * Chip8::screen_height;
     static constexpr auto F = int{0xF};
-    static constexpr auto PROGRAM_START = uint16_t{512};
+    static constexpr auto xFF = 0xFFU;
+    static constexpr auto program_start = uint16_t{512};
 
     // sprites
     static constexpr std::array<uint8_t, 80> fontset = {{
@@ -41,11 +45,11 @@ namespace chip8 {
         std::mt19937 gen(rd());
         return gen;
     }
-    static auto random_generator = getRandomGenerator();
 
+    static auto random_generator = getRandomGenerator(); // NOLINT if it throws, app crashes
 
     Chip8::Chip8() {
-        std::copy(fontset.begin(), fontset.end(), memory.begin());
+        ranges::copy(fontset, memory.begin());
         op_clear_screen(0);
     }
 
@@ -54,10 +58,10 @@ namespace chip8 {
         std::ifstream rom_file(filename);
         if (rom_file) {
             rom_file >> std::noskipws;
-            std::vector<uint8_t> v((std::istream_iterator<uint8_t>(rom_file)),
-                                 (std::istream_iterator<uint8_t>()));
-            std::copy(v.begin(), v.end(), memory.begin() + PROGRAM_START);
-            program_size = v.size();
+            std::vector<uint8_t> rom((std::istream_iterator<uint8_t>(rom_file)),
+                                     (std::istream_iterator<uint8_t>()));
+            ranges::copy(rom, memory.begin() + program_start);
+            program_size = rom.size();
             reset();
             draw_flag = true;
         } else {
@@ -68,20 +72,21 @@ namespace chip8 {
 
 
     void Chip8::exec_op_cycle() {
-        const uint16_t opcode = (memory[PC] << 8) | memory[PC + 1];
+        const auto opcode = gsl::narrow_cast<uint16_t>((memory[PC] << 8) | memory[PC + 1]); // NOLINT (cppcoreguidelines-pro-bounds-constant-array-index)
         incPC();
         const auto op = fetch_op(opcode);
         std::invoke(op, this, opcode);
         call_stack.push_front(opcode);
-        if (call_stack.size() > CALL_STACK_SIZE) call_stack.pop_back();
+        if (call_stack.size() > call_stack_size) { call_stack.pop_back(); }
         tick_count++;
     }
 
 
+    namespace {
     // get 4 bit starting with bit-position startbit
     [[nodiscard]] constexpr uint16_t get4Bit(const uint16_t opcode, const uint16_t start_bit) {
-      constexpr auto mask = uint16_t{0xFU};
-      return (opcode >> start_bit) & mask;
+        constexpr auto mask = uint16_t{0xFU};
+        return (opcode >> start_bit) & mask;
     }
 
 
@@ -103,9 +108,8 @@ namespace chip8 {
     }
 
     // returns X in 0x__NN
-    [[nodiscard]] constexpr uint16_t nn(uint16_t opcode) {
-        constexpr auto mask = uint16_t{0xFF};
-        return opcode & mask;
+    [[nodiscard]] constexpr uint8_t nn(uint16_t opcode) {
+        return gsl::narrow_cast<uint8_t>(opcode & 0xFFU);
     }
 
 
@@ -114,17 +118,17 @@ namespace chip8 {
         constexpr auto mask = uint16_t{0xFFF};
         return opcode & mask;
     }
-
+}
 
     // clear screen
-    void Chip8::op_clear_screen(uint16_t) {
-        std::fill(display_buffer.begin(), display_buffer.end(), 0);
+    void Chip8::op_clear_screen(uint16_t) { // NOLINT opcode is not needed
+        ranges::fill(display_buffer, 0);
         draw_flag = true;
     }
 
 
     // return from subroutine
-    void Chip8::op_return_from_subroutine(uint16_t) {
+    void Chip8::op_return_from_subroutine(uint16_t) { // NOLINT opcode is not needed
         PC = stack.top();
         stack.pop();
     }
@@ -146,7 +150,7 @@ namespace chip8 {
     // Skips the next instruction if VX equals NN.
     void Chip8::op_skip_ifeq(const uint16_t opcode) {
         if (V[X(opcode)] == nn(opcode)) {
-          incPC();
+            incPC();
         }
     }
 
@@ -209,7 +213,7 @@ namespace chip8 {
         const auto y = Y(opcode);
         const auto vx = V[x];
         V[x] += V[y];
-        V[F] = vx > V[x];
+        V[F] = vx > V[x]; // NOLINT (readability-implicit-bool-conversion)
     }
 
 
@@ -219,7 +223,7 @@ namespace chip8 {
         const auto y = Y(opcode);
         const auto vx = V[x];
         V[x] -= V[y];
-        V[F] = vx >= V[x];
+        V[F] = vx >= V[x]; // NOLINT (readability-implicit-bool-conversion)
     }
 
 
@@ -229,7 +233,7 @@ namespace chip8 {
         const auto y = Y(opcode);
         const auto vy = V[y];
         V[x] = V[y] - V[x];
-        V[F] = vy >= V[x];
+        V[F] = vy >= V[x]; // NOLINT (readability-implicit-bool-conversion)
     }
 
 
@@ -240,8 +244,8 @@ namespace chip8 {
     void Chip8::op_rshift(uint16_t opcode) {
         const auto x = X(opcode);
         const auto y = shift_implementation_vy ? Y(opcode) : X(opcode);
-        V[F] = V[y] & 0b1;
-        V[x] = V[y] >> 1;
+        V[F] = V[y] & 0b1U;
+        V[x] = V[y] >> 1U;
     }
 
 
@@ -253,7 +257,7 @@ namespace chip8 {
         const auto x = X(opcode);
         const auto y = shift_implementation_vy ? Y(opcode) : X(opcode);
         V[F] = V[y] >> 7;
-        V[x] = V[y] << 1U;
+        V[x] = gsl::narrow_cast<uint8_t>((V[y] << 1U) & 0xFF);
     }
 
 
@@ -279,8 +283,8 @@ namespace chip8 {
 
     // Sets VX to the result of a bitwise and operation on a random number (Typically: 0 to 255) and NN.
     void Chip8::op_and_rand(uint16_t opcode) {
-        std::uniform_int_distribution<int> distrib(0, 255);
-        const uint8_t random_number = distrib(random_generator);
+        std::uniform_int_distribution<int> distrib(0, xFF);
+        const auto random_number = gsl::narrow_cast<uint8_t>(distrib(random_generator) & 0xFF);
         const auto val = nn(opcode);
         V[X(opcode)] = random_number & val;
     }
@@ -291,9 +295,10 @@ namespace chip8 {
     // I value does not change after the execution of this instruction.
     // As described above, VF is set to 1 if any screen pixels are flipped
     // from set to unset when the sprite is drawn, and to 0 if that does not happen
+    // Sprites that don't fit on the screen wrap around the screen (show on the other end).
     void Chip8::op_draw(uint16_t opcode) {
-        const auto vx = V[X(opcode)] % SCREEN_WIDTH;
-        const auto vy = V[Y(opcode)] % SCREEN_HEIGHT;
+        const auto vx = V[X(opcode)] % screen_width;
+        const auto vy = V[Y(opcode)] % screen_height;
         const auto N = static_cast<int>(n(opcode));
 
         const auto byte = vx / 8;
@@ -301,20 +306,23 @@ namespace chip8 {
 
         bool flipped = false;
         // what is happening here
-        for (std::weakly_incrementable auto line : std::views::iota(0, N)) {
-            const auto sprite_line = memory[I + line];
+        for (int line = 0; line < N; line++) {
+            const auto index = static_cast<uint32_t>(I + line);
+            const auto sprite_line = memory[index];
 
-            const uint8_t left_byte_idx = (byte + (vy + line) * 8);
+            // sprites that don't fit on the screen wrap around the screen (show on the other end).
+            const auto left_byte_idx = gsl::narrow_cast<uint8_t>(byte + ((vy + line) % 32) * 8);
             const auto old_left = display_buffer[left_byte_idx];
             display_buffer[left_byte_idx] = old_left ^ (sprite_line >> offset);
-            if (old_left & (~display_buffer[left_byte_idx])) {
+            if (old_left & (~display_buffer[left_byte_idx])) { // NOLINT (readability-implicit-bool-conversion)
                 flipped = true;
             }
 
-            const uint8_t right_byte_idx = (byte + 1) % 8 + (vy + line) * 8;
+            // sprites that don't fit on the screen wrap around the screen (show on the other end).
+            const auto right_byte_idx = gsl::narrow_cast<uint8_t>((byte + 1) % 8 + ((vy + line) % 32) * 8);
             const auto old_right = display_buffer[right_byte_idx];
-            display_buffer[right_byte_idx] = old_right ^ (sprite_line << (8 - offset));
-            if (old_right & (~display_buffer[right_byte_idx])) {
+            display_buffer[right_byte_idx] = (old_right ^ ((sprite_line << (8 - offset)) & 0xFF));
+            if (old_right & (~display_buffer[right_byte_idx])) { // NOLINT (readability-implicit-bool-conversion)
                 flipped = true;
             }
         }
@@ -352,7 +360,7 @@ namespace chip8 {
     // This implementations only simulates a blocking by not increasing the PC
     void Chip8::op_get_key(uint16_t opcode) {
         // check all keys
-        for (int key_idx = 0; auto key_pressed : keys) {
+        for (std::size_t key_idx = 0; auto key_pressed: keys) {
             if (key_pressed) {
                 V[X(opcode)] = static_cast<uint8_t >(key_idx);
                 keys[key_idx] = false;
@@ -386,7 +394,7 @@ namespace chip8 {
 
     // 0xFX29 - Set I = location of sprite for digit Vx.
     void Chip8::op_set_I_to_sprite_address(uint16_t opcode) {
-        I = SIZEOFSPRITE * get4Bit(V[X(opcode)], 0);
+        I = sprite_size * get4Bit(V[X(opcode)], 0);
     }
 
 
@@ -406,7 +414,7 @@ namespace chip8 {
     // I is set to I + X + 1 after operation --> see https://github.com/mattmikolay/chip-8/wiki/CHIP%E2%80%908-Instruction-Set
     void Chip8::op_regdump(uint16_t opcode) {
         const uint16_t x = X(opcode) + 1;
-        std::copy_n(V.begin(), x, memory.begin() + I);
+        ranges::copy_n(V.begin(), x, memory.begin() + I);
         I += x;
     }
 
@@ -430,7 +438,7 @@ namespace chip8 {
                 0xF00F, 0xF000, 0xF000, 0xF000,
                 0xF000, 0xF000, 0xF0FF, 0xF0FF
         };
-        static constexpr auto map = Map<uint16_t, MFP, operations.size()>{{operations}};
+        static constexpr auto map = Map<uint16_t, MFP, num_opcodes>{{operations}}; // NOLINT
 
         const auto idx = get4Bit(opcode, 12);
         const auto mask = masks[idx];
@@ -439,44 +447,44 @@ namespace chip8 {
     }
 
 
-    std::array<uint8_t, Chip8::SCREEN_SIZE> Chip8::get_screen() const {
-      std::array<uint8_t, Chip8::SCREEN_SIZE> screen{0};
+    std::array<uint8_t, Chip8::screen_size> Chip8::get_screen() const {
+        std::array<uint8_t, Chip8::screen_size> screen{0};
 
-      // for_each byte of the display_buffer
-      // set 8 fields of the screen array
-      std::for_each(
-        display_buffer.rbegin(), display_buffer.rend(),
+        // for_each byte of the display_buffer
+        // set 8 fields of the screen array
+        std::for_each(
+                display_buffer.rbegin(), display_buffer.rend(),
 
-        [&screen, idx = int{0}](uint8_t byte) mutable {
-            std::bitset<8> bitIsSet{byte};
-            for(int i = 0; i < 8; i++) {
-              screen[idx] = bitIsSet[i] ? 0xFF : 0x0;
-              idx++;
-            }
-      });
-      return screen;
+                [&screen, idx = std::size_t{0}](uint8_t byte) mutable {
+                    std::bitset<8> bitIsSet{byte};
+                    for (std::size_t i = 0; i < 8; i++) {
+                        screen[idx] = bitIsSet[i] ? 0xFF : 0x0;
+                        idx++;
+                    }
+                });
+        return screen;
     }
 
 
     void Chip8::incPC() {
-      static constexpr uint16_t inc = 2;
-      PC += inc;
+        static constexpr uint16_t inc = 2;
+        PC += inc;
     }
 
 
     void Chip8::signal() {
-        delay_timer = std::max(delay_timer - 1, 0);
-        sound_timer = std::max(sound_timer - 1, 0);
+        delay_timer = gsl::narrow_cast<uint8_t>(std::max(delay_timer - 1, 0));
+        sound_timer = gsl::narrow_cast<uint8_t >(std::max(sound_timer - 1, 0));
     }
 
 
     void Chip8::reset() {
         state = State::Reset;
 
-        PC = PC_START_ADDRESS;
+        PC = pc_start_address;
         I = 0;
 
-        static constexpr std::array<uint8_t, 8 * 32> start_screen{
+        static constexpr std::array<uint8_t, bytes_in_screen> start_screen{
                 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
                 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
                 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
@@ -494,10 +502,10 @@ namespace chip8 {
                 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
                 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
         };
-        std::copy(start_screen.begin(), start_screen.end(), display_buffer.begin());
+        ranges::copy(start_screen, display_buffer.begin());
 
         // clear registers
-        std::fill(V.begin(), V.end(), 0);
+        ranges::fill(V, 0);
         // clear stack
         stack = {};
         delay_timer = 0;
@@ -532,11 +540,10 @@ namespace chip8 {
 
 
     void Chip8::tick() {
-        if (game_running()) {
+        if (state == State::Running) {
             signal();
-
             try {
-                for ([[maybe_unused]] auto i : std::views::iota(0, cycles_per_frame)) {
+                for (auto i = 0; i < cycles_per_frame; i++) {
                     exec_op_cycle();
                 }
             } catch (std::range_error &e) {
@@ -548,8 +555,7 @@ namespace chip8 {
 
     void Chip8::error() {
         state = State::Empty;
-
-        static constexpr std::array<uint8_t, 8 * SCREEN_HEIGHT> error_screen{
+        static constexpr std::array<uint8_t, bytes_in_screen> error_screen{
                 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
                 0x7f, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xfe, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
                 0x7f, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xfe, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
@@ -567,7 +573,7 @@ namespace chip8 {
                 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
                 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
         };
-        std::copy(error_screen.begin(), error_screen.end(), display_buffer.begin());
+        ranges::copy(error_screen, display_buffer.begin());
         draw_flag = true;
         // display error
     }

@@ -11,36 +11,57 @@ namespace chip8 {
 
 enum class State{ Running, Paused, Reset, Empty };
 
+/**
+* Chip8 - the class implements a chip8 emulator.
+*
+*/
 class Chip8 {
   public:
-    static constexpr auto SCREEN_WIDTH = 64;
-    static constexpr auto SCREEN_HEIGHT = 32;
-    static constexpr auto SCREEN_SIZE = SCREEN_WIDTH * SCREEN_HEIGHT;
-    static constexpr auto MEMSIZE = 4096;
-    static constexpr auto N_REGISTERS = 16;
-    static constexpr auto PC_START_ADDRESS = 512;
-    static constexpr auto N_OPCODES = 34;
-    static constexpr auto CALL_STACK_SIZE = 40;
+    static constexpr auto screen_width = 64;
+    static constexpr auto screen_height = 32;
+    static constexpr auto screen_size = screen_width * screen_height;
+    static constexpr auto mem_size = 4096;
+    static constexpr auto num_registers = 16;
+    static constexpr auto pc_start_address = 512;
+    static constexpr auto num_opcodes = 34;
+    static constexpr auto call_stack_size = 40;
 
     Chip8();
 
-    void load_rom(const std::string &path);
+    void load_rom(const std::string &filename);
 
+    /**
+     * Execute one op cycle:
+     * Fetch opcode, execute operation and increase the program counter.
+     */
     void exec_op_cycle();
+    /**
+     *
+     */
     void signal();
 
     void tick();
 
     /**
-     * Get the Chip8 display buffer as a continuous array of size SCREEN_SIZE,
+     * Get the Chip8 display buffer as a continuous array of size screen_size,
      * with a field for every pixel of the Chip8 display. If a pixel is set,
      * the corresponding array field is set to 0xFF otherwise to 0x00.
      *
      * @return Chip8 display as an array
      */
-    [[nodiscard]] std::array<uint8_t, SCREEN_SIZE> get_screen() const;
-    [[nodiscard]] bool game_running() const { return state == State::Running; };
-
+    [[nodiscard]] std::array<uint8_t, screen_size> get_screen() const;
+    /**
+     * Current state of the emulator.
+     *
+     * @return Chip8 state
+     */
+    [[nodiscard]] State get_state() const { return state; }
+    /**
+     * The Chip8-sound signal has only two states: On or Off.
+     *
+     * @return
+     */
+    [[nodiscard]] bool sound_signal() const { return sound_timer != 0; };
     /**
      * Pause or unpause a running Chip8 program.
      */
@@ -49,16 +70,14 @@ class Chip8 {
     [[nodiscard]] uint16_t get_pc() const { return PC; }
     [[nodiscard]] uint16_t get_i() const { return I; }
     [[nodiscard]] uint16_t get_delay_timer() const { return delay_timer; }
-    [[nodiscard]] uint16_t get_tick_count() const { return tick_count; }
-    [[nodiscard]] const std::array<uint8_t, MEMSIZE> &get_memory() const { return memory; }
-    [[nodiscard]] const std::array<uint8_t, N_REGISTERS> &get_registers() const { return V; }
+    [[nodiscard]] uint16_t get_sound_timer() const { return sound_timer; }
+    [[nodiscard]] std::size_t get_tick_count() const { return tick_count; }
+    [[nodiscard]] const std::array<uint8_t, mem_size> &get_memory() const { return memory; }
+    [[nodiscard]] const std::array<uint8_t, num_registers> &get_registers() const { return V; }
     [[nodiscard]] const std::deque<uint16_t> &get_call_stack() const { return call_stack; }
 
     std::array<bool, 16> keys{};
-    // TODO changed from uint64_t, and why is this public ???
-    int program_size = 0;
     int cycles_per_frame = 8;
-
     bool draw_flag = false;
 
     /**
@@ -78,22 +97,22 @@ class Chip8 {
     using MFP = void (Chip8::*)(uint16_t);
 
     State state = State::Empty;
+    std::size_t program_size = 0;
 
-    uint16_t PC = PC_START_ADDRESS;
+    uint16_t PC = pc_start_address;
     uint16_t I = 0;
 
-    std::array<uint8_t, N_REGISTERS> V{}; // 16 general purpose registers (VF register is used as flag)
-    std::array<uint8_t, MEMSIZE> memory{};
-    std::stack<uint16_t> stack = std::stack<uint16_t>();
+    std::array<uint8_t, num_registers> V{}; // 16 general purpose registers (VF register is used as flag)
+    std::array<uint8_t, mem_size> memory{};
+    std::stack<uint16_t> stack{};
     uint8_t delay_timer{};    // DT
     uint8_t sound_timer{};    // ST
 
-    std::array<uint8_t, 8 * 32> display_buffer{};
-    std::array<uint8_t, 8 * 32> display_buffer_backup{};
+    std::array<uint8_t, 8 * 32> display_buffer{}; // NOLINT no overflow
 
     bool shift_implementation_vy = true;
     std::deque<uint16_t> call_stack;
-    int tick_count = 0;
+    std::size_t tick_count = 0;
 
     void reset();
     void error();
@@ -136,7 +155,7 @@ class Chip8 {
     void op_regdump(uint16_t opcode);
     void op_regload(uint16_t opcode);
 
-    static constexpr std::array<std::pair<uint16_t, MFP>, N_OPCODES> operations{
+    static constexpr std::array<std::pair<uint16_t, MFP>, num_opcodes> operations{
         {
             { 0x00E0, &Chip8::op_clear_screen }, { 0x00EE, &Chip8::op_return_from_subroutine },
               { 0x1000, &Chip8::op_goto }, { 0x2000, &Chip8::op_call_subroutine },

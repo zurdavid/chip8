@@ -1,7 +1,7 @@
 #include <fmt/format.h>
-#include <ranges>
 #include <fstream>
 #include <spdlog/spdlog.h>
+#include <gsl/narrow>
 
 #include "gui/GUI.h"
 #include "chip8/InstructionSet.h"
@@ -10,22 +10,50 @@
 #include "../res/bindings/imgui_impl_opengl3.h"
 
 
+using chip8::State, State::Paused, chip8::State::Running, chip8::State::Empty, chip8::State::Reset;
+
+// translate state to possible action name
+const char* state_to_action_name(State t){
+    switch(t){
+        case State::Running:
+            return "Pause";
+        case State::Paused:
+            return "Resume";
+        case State::Reset:  // NOLINT intentional
+            return "Start";
+        case State::Empty:
+            return "Start"; // Corresponding Button should be disabled
+    }
+    return "";
+}
+
+
 // ImGui::Checkbox wrapper function, that calls a function when the checkbox is clicked.
 bool CallBackCheckbox(const char* label, bool* v, auto func) {
     bool old_val = *v;
     ImGui::Checkbox(label, v);
     bool new_val = *v;
-    if (new_val != old_val) func(new_val);
+    if (new_val != old_val) { func(new_val); }
     return new_val;
 }
 
 
-GUI::GUI(GLFWwindow *window, chip8::Chip8 &ch8) : window_(window), chip8(ch8) {
+GUI::GUI(GLFWwindow *window, chip8::Chip8 &t_chip8) : window_(window), chip8(t_chip8) {
     // Setup Dear ImGui context
     IMGUI_CHECKVERSION();
+
+    // Style
     ImGui::CreateContext();
-    ImGuiIO &io = ImGui::GetIO();
-    (void)io;
+    ImGuiIO& io = ImGui::GetIO();
+
+    // load font and merge icons into it
+    static constexpr auto fontsize = 18.0F;
+    [[maybe_unused]] ImFont* font = io.Fonts->AddFontFromFileTTF("res/fonts/DroidSans.ttf", fontsize);
+    static constexpr std::array<ImWchar,3> ranges{ 0xf000, 0xf3ff, 0 };
+    ImFontConfig config;
+    config.MergeMode = true;
+    io.Fonts->AddFontFromFileTTF("res/fonts/Font Awesome 6 Free-Regular-400.otf", fontsize, &config, ranges.data());
+
     ImGui::StyleColorsDark();
 
     // Setup Platform/Renderer backends
@@ -33,17 +61,11 @@ GUI::GUI(GLFWwindow *window, chip8::Chip8 &ch8) : window_(window), chip8(ch8) {
     const char *glsl_version = "#version 330";
     ImGui_ImplOpenGL3_Init(glsl_version);
 
-    // scale
-    static constexpr float scale_factor = 1.3F;
-    ImGui::GetStyle().ScaleAllSizes(scale_factor);
-    ImGui::GetIO().FontGlobalScale = scale_factor;
-
-    // create a file browser instance
+    // file browser settings
     fileDialog.SetTitle("Load Chip8-ROM...");
     fileDialog.SetTypeFilters({ ".ch8" });
     // TODO hardcoded path
-    auto path = fileDialog.GetPwd().parent_path().parent_path().append("roms");
-    fileDialog.SetPwd(path);
+    fileDialog.SetPwd("roms");
 }
 
 
@@ -56,7 +78,13 @@ void GUI::build_context() {
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
 
+//    if (IsKeyDown(ImGuiKey key)) {
+//
+//    }
+
     if (show_demo_window) { ImGui::ShowDemoWindow(&show_demo_window); }
+    ImGui::ShowStyleEditor();
+    ImGui::ShowFontSelector("change font");
 
     fileDialog.Display();
     // TODO this is handling input - needs to be somewhere else
@@ -74,34 +102,45 @@ void GUI::build_context() {
     }
 
     display_menubar();
+    if (show_settings_window) { display_settings_window(); }
     if (show_control_window) { display_control_window(); }
-    //display_memory_map();
     if (show_readme_window) { display_readme(); }
-    //display_program_code();
 
     // Rendering
     ImGui::Render();
 }
 
 
+
 void GUI::display_menubar() {
+    const auto state = chip8.get_state();
+
     ImGui::BeginMainMenuBar();
     {
         if (ImGui::BeginMenu("File")) {
-            if (ImGui::MenuItem("Open...")) { fileDialog.Open(); }
-            if (ImGui::MenuItem("Reload ROM")) { chip8.load_rom(game_path); }
+            if (ImGui::MenuItem("Open...", "Ctrl+O")) { fileDialog.Open(); }
             if (ImGui::MenuItem("Exit")) { glfwSetWindowShouldClose(window_, GLFW_TRUE); }
             ImGui::EndMenu();
         }
+        if (ImGui::BeginMenu("Chip8")) {
+            ImGui::BeginDisabled(state == Empty);
+            if (ImGui::MenuItem(state_to_action_name(state), "Space")) { chip8.toggle_pause(); }
+            ImGui::EndDisabled();
+
+            ImGui::BeginDisabled(chip8.get_state() == State::Empty);
+            if (ImGui::MenuItem("Reset ROM", "Ctrl+R")) { chip8.load_rom(game_path); }
+            ImGui::EndDisabled();
+            ImGui::EndMenu();
+
+        }
         if (ImGui::BeginMenu("View")) {
-            ImGui::Checkbox("Control", &show_control_window );
-            if (ImGui::MenuItem("Debug")) { show_debug_window = true; }
-            if (ImGui::MenuItem("Debug")) { chip8.load_rom(game_path); }
+            ImGui::MenuItem("Settings", nullptr,  &show_settings_window );
+            ImGui::MenuItem("Control", nullptr, &show_control_window );
             ImGui::EndMenu();
         }
         if (ImGui::BeginMenu("About")) {
-            if (ImGui::MenuItem("Show ROM-Readme")) { show_readme_window = true; }
-            ImGui::Checkbox("Show ImGui Demo Window", &show_demo_window );
+            ImGui::MenuItem("Show ROM-Readme", nullptr, &show_readme_window);
+            ImGui::MenuItem("Show ImGui Demo Window", nullptr, &show_demo_window );
             ImGui::EndMenu();
         }
     }
@@ -109,14 +148,12 @@ void GUI::display_menubar() {
 }
 
 
-void GUI::display_control_window() {
-    // Begin Window
-    ImGui::Begin("Chip8-Emulator!");
-
-    ImGui::Text("Options: ");
+void GUI::display_settings_window() {
+    ImGui::Begin("Settings");
 
     ImGui::Text("Number of instruction cycles per frame:");
-    ImGui::SliderInt("cycles/frame:", &chip8.cycles_per_frame, 1, 500);
+    static constexpr auto max_cycles_per_frame = 500;
+    ImGui::SliderInt("cycles/frame:", &chip8.cycles_per_frame, 1, max_cycles_per_frame);
 
     CallBackCheckbox(
         "Shift operations: shift value of register VY",
@@ -126,110 +163,64 @@ void GUI::display_control_window() {
 
     ImGui::Separator(); ImGui::Separator();
 
-    if (ImGui::Button(chip8.game_running() ? "Pause" : "Resume")) { chip8.toggle_pause(); }
-
-    const auto pc = chip8.getPC();
-    ImGui::Text("PC: %X (%d)", pc, pc);
-    const uint16_t opcode = (chip8.get_memory()[pc] << 8) + chip8.get_memory()[pc + 1];
-    ImGui::Text("Instruction: %04X", opcode);
-    auto assembler = chip8::op_to_assembler(opcode);
-    ImGui::Text("%s", assembler.data());
-    ImGui::Text("I: %X (%d)", chip8.getI(), chip8.getI());
-
-
-    ImGui::Text("DT: %d", chip8.getDT());
-    ImGui::SameLine();
-    if (ImGui::Button("decrease")) { chip8.signal(); }
-    ImGui::SameLine();
-    auto current_DT = chip8.getDT();
-    if (ImGui::Button("set to 0")) {
-        for (int i = 0; i < current_DT; i++) { chip8.signal(); }
-    }
-
-    if (ImGui::Button("Execute instruction")) { chip8.exec_op_cycle(); }
 
     ImGui::Separator();
 
+    static constexpr auto milis_in_second = 1000.0F;
     ImGui::Text("Application average %.3f ms/frame (%.1f FPS)",
-      static_cast<double>(1000.0F / ImGui::GetIO().Framerate),
+      static_cast<double>(milis_in_second / ImGui::GetIO().Framerate),
       static_cast<double>(ImGui::GetIO().Framerate));
 
     ImGui::End();
 }
 
+void GUI::display_control_window() {
+    ImGui::Begin("call stack");
+    const auto state = chip8.get_state();
 
-void GUI::display_memory_map() {
-    const auto V = chip8.get_registers();
-    if (ImGui::BeginTable("##registers",
-          2,
-          ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingFixedFit)) {
-        for (int row = 0; auto v : V) {
-            ImGui::TableNextRow();
-            ImGui::TableSetColumnIndex(0);
-            ImGui::Text("%1X", row++);
-            ImGui::TableSetColumnIndex(1);
-            ImGui::Text("%02X", v);
+    ImGui::BeginDisabled( state != Paused && state != Reset);
+    if (ImGui::Button("Execute instruction")) { chip8.exec_op_cycle(); }
+    ImGui::EndDisabled();
+
+    ImGui::SameLine();
+
+    ImGui::BeginDisabled(state == Empty);
+    if (ImGui::Button(state_to_action_name(state))) { chip8.toggle_pause(); }
+    ImGui::EndDisabled();
+
+    ImGui::Text("Tick count: %zu", chip8.get_tick_count());
+    ImGui::Separator();
+
+    const auto pc = chip8.get_pc();
+    ImGui::BeginChild("stack", ImVec2(ImGui::GetContentRegionAvail().x * 0.5F, 0), true); // NOLINT no magic number
+        const uint16_t op = gsl::narrow_cast<uint16_t>(chip8.get_memory()[pc] << 8) + chip8.get_memory()[pc + 1]; // NOLINT signed because of int promotion
+        auto op_text = chip8::opcode_to_assembler(op);
+        ImGui::Text("%04X \t %s", op, op_text.data());
+
+        ImGui::Separator();
+
+        auto call_stack = chip8.get_call_stack();
+        for (const auto opcode : call_stack) {
+            auto assembler = chip8::opcode_to_assembler(opcode);
+            ImGui::Text("%04X \t %s", opcode, assembler.data());
         }
-        ImGui::EndTable();
+    ImGui::EndChild();
+    ImGui::SameLine();
+    ImGui::BeginChild("registers", ImVec2(0, 0), true);
+        ImGui::Text("PC: 0x%2X (%d)", pc, pc);
+        ImGui::Separator();
+        const auto I = chip8.get_i();
+        ImGui::Text("I: %X (%d)", I, I);
+
+    auto registers = chip8.get_registers();
+        for (int n = 0; const auto reg : registers) {
+            ImGui::Text("V%X = 0x%02X", n++, reg);
     }
+    ImGui::Text("DelayTimer: %d", chip8.get_delay_timer());
+    ImGui::Text("Sound Timer: %d", chip8.get_sound_timer());
+    ImGui::EndChild();
 
-    // Memory
-    const auto mem = chip8.get_memory();
-    const auto *itr = mem.begin();
-    constexpr auto num_cols = int{ 17 };
-    static ImVector<int> selection;
-
-    if (ImGui::BeginTable("##memory",
-          num_cols,
-          ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingFixedFit)) {
-        // Table Header
-        ImGui::TableHeadersRow();
-        for (auto col_idx : std::views::iota(0, 16)) {
-            ImGui::TableSetColumnIndex(col_idx + 1);
-            ImGui::Text("%2X", col_idx);
-        }
-
-        // Table Body
-        // TODO whats going on here --> maybe_unused
-        for (int cnt = 0, row_idx = 0; [[maybe_unused]] const auto &val : mem) {
-            auto col_idx = cnt++ % 16;
-            if (col_idx == 0) {
-                const auto row_id = row_idx++;
-                const bool item_is_selected = selection.contains(row_id);
-                ImGui::PushID(row_id);
-
-                ImGui::TableNextRow();
-                ImGui::TableSetColumnIndex(0);
-
-                const auto label_txt = fmt::format("0x{:03X}_", row_id);
-                if (ImGui::Selectable(
-                      label_txt.c_str(), item_is_selected, ImGuiSelectableFlags_SpanAllColumns)) {
-                    if (ImGui::GetIO().KeyCtrl) {
-                        if (item_is_selected) {
-                            selection.find_erase_unsorted(row_id);
-                        } else {
-                            selection.push_back(row_id);
-                        }
-                    } else {
-                        selection.clear();
-                        selection.push_back(row_id);
-                    }
-                }
-            }
-            ImGui::TableSetColumnIndex(col_idx + 1);
-            ImGui::Text("%02X", *(itr++));
-
-            if (col_idx == 0xF) { ImGui::PopID(); }
-        }
-        ImGui::EndTable();
-    }
-}
-
-
-void GUI::cleanup() {
-    ImGui_ImplOpenGL3_Shutdown();
-    ImGui_ImplGlfw_Shutdown();
-    ImGui::DestroyContext();
+    ImGui::End();
 }
 
 
@@ -253,14 +244,8 @@ void GUI::display_readme() {
 }
 
 
-void GUI::display_program_code() {
-    // if (!chip8.game_running()) return;
-    ImGui::Begin("Program");
-    for (int pc = chip8::Chip8::PC_START_ADDRESS; pc < chip8::Chip8::PC_START_ADDRESS + chip8.program_size; pc += 2) {
-        const uint16_t opcode = (chip8.get_memory()[pc] << 8) + chip8.get_memory()[pc + 1];
-        const auto op = chip8::op_to_assembler(opcode);
-        ImGui::Text("Instruction: %04X", opcode);
-        ImGui::Text("%s", op.data());
-    }
-    ImGui::End();
+GUI::~GUI() {
+    ImGui_ImplOpenGL3_Shutdown();
+    ImGui_ImplGlfw_Shutdown();
+    ImGui::DestroyContext();
 }

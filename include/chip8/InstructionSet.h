@@ -8,70 +8,69 @@
 
 namespace chip8 {
 
-static constexpr int N_OPCODES = 34;
+/**
+ *
+ *
+ * @param opcode a Chip8 opcode
+ * @return The corresponding assembly instruction or "Invalid opcode".
+*/
+constexpr std::string_view opcode_to_assembler(uint16_t
+opcode);
 
+
+///////////////////////////////////////////////////////////////////////////
+/// Implementation
+
+// Masks to set the variable nibbles of opcodes to zero.
+// The most significant nibble is used to index into the array.
 static constexpr auto masks = std::array<uint16_t, 16>{
-  0xFFFF, 0xF000, 0xF000, 0xF000,
-  0xF000, 0xF000, 0xF000, 0xF000,
-  0xF00F, 0xF000, 0xF000, 0xF000,
-  0xF000, 0xF000, 0xF0FF, 0xF0FF
+    0xFFFF, 0xF000, 0xF000, 0xF000,
+    0xF000, 0xF000, 0xF000, 0xF000,
+    0xF00F, 0xF000, 0xF000, 0xF000,
+    0xF000, 0xF000, 0xF0FF, 0xF0FF
 };
 
-using namespace std::literals::string_view_literals;
-static constexpr std::array<std::pair<uint16_t, std::string_view>, N_OPCODES> operations{ {
-{ 0x00E0,  "CLS" },
-{ 0x00EE,  "RET" },
-{ 0x1000,  "JP addr" },
-{ 0x2000,  "CALL addr" },
-{ 0x3000,  "SE Vx, byte" },
-{ 0x4000,  "SNE Vx, byte" },
-{ 0x5000,  "SE Vx, Vy" },
-{ 0x6000,  "LD Vx, byte" },
-{ 0x7000,  "ADD Vx, byte" },
-{ 0x8000,  "LD Vx, Vy" },
-{ 0x8001,  "OR Vx, Vy" },
-{ 0x8002,  "AND Vx, Vy" },
-{ 0x8003,  "XOR Vx, Vy" },
-{ 0x8004,  "ADD Vx, Vy" },
-{ 0x8005,  "SUB Vx, Vy" },
-{ 0x8006,  "SHR Vx {, Vy}" },
-{ 0x8007,  "SUBN Vx, Vy" },
-{ 0x800E,  "SHL Vx {, Vy}" },
-{ 0x9000,  "SNE Vx, Vy" },
-{ 0xA000,  "LD I, addr" },
-{ 0xB000,  "JP V0, addr" },
-{ 0xC000,  "RND Vx, byte" },
-{ 0xD000,  "DRW Vx, Vy, nibble" },
-{ 0xE09E,  "SKP Vx" },
-{ 0xE0A1,  "SKNP Vx" },
-{ 0xF007,  "LD Vx, DT" },
-{ 0xF00A,  "LD Vx, K" },
-{ 0xF015,  "LD DT, Vx" },
-{ 0xF018,  "LD ST, Vx" },
-{ 0xF01E,  "ADD I, Vx" },
-{ 0xF029,  "LD F, Vx" },
-{ 0xF033,  "LD B, Vx" },
-{ 0xF055,  "LD [I], Vx" },
-{ 0xF065,  "LD Vx, [I]" },
-} };
-
-std::string_view op_to_assembler(uint16_t opcode) {
-    static constexpr auto map = Map<uint16_t, std::string_view, N_OPCODES>{{operations}};
-    static constexpr auto error_msg = "no valid opcode"sv;
-    auto mask = uint16_t{0xFU};
-    mask = masks[(opcode >> 12) & mask];
-    try {
-        const auto assembler = map.at(opcode & mask);
-        return assembler;
-    } catch (const std::range_error& e) {
-        return error_msg;
-    }
+constexpr std::string_view opcode_to_assembler(uint16_t opcode) {
+    const uint16_t mask = masks[(opcode >> 12) & 0xFU];
+    switch (opcode & mask) {
+    case 0x00E0: return "CLS";
+    case 0x00EE: return "RET";
+    case 0x1000: return "JP addr";
+    case 0x2000: return "CALL addr";
+    case 0x3000: return "SE Vx, byte";
+    case 0x4000: return "SNE Vx, byte";
+    case 0x5000: return "SE Vx, Vy";
+    case 0x6000: return "LD Vx, byte";
+    case 0x7000: return "ADD Vx, byte";
+    case 0x8000: return "LD Vx, Vy";
+    case 0x8001: return "OR Vx, Vy";
+    case 0x8002: return "AND Vx, Vy";
+    case 0x8003: return "XOR Vx, Vy";
+    case 0x8004: return "ADD Vx, Vy";
+    case 0x8005: return "SUB Vx, Vy";
+    case 0x8006: return "SHR Vx {, Vy}";
+    case 0x8007: return "SUBN Vx, Vy";
+    case 0x800E: return "SHL Vx {, Vy}";
+    case 0x9000: return "SNE Vx, Vy";
+    case 0xA000: return "LD I, addr";
+    case 0xB000: return "JP V0, addr";
+    case 0xC000: return "RND Vx, byte";
+    case 0xD000: return "DRW Vx, Vy, nibble";
+    case 0xE09E: return "SKP Vx";
+    case 0xE0A1: return "SKNP Vx";
+    case 0xF007: return "LD Vx, DT";
+    case 0xF00A: return "LD Vx, K";
+    case 0xF015: return "LD DT, Vx";
+    case 0xF018: return "LD ST, Vx";
+    case 0xF01E: return "ADD I, Vx";
+    case 0xF029: return "LD F, Vx";
+    case 0xF033: return "LD B, Vx";
+    case 0xF055: return "LD [I], Vx";
+    case 0xF065: return "LD Vx, [I]";
+    default: return "Invalid opcode";
+}
 }
 
 }
-
-
-
-
 
 #endif// CHIP8_INSTRUCTIONSET_H
