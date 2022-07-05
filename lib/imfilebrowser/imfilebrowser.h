@@ -717,7 +717,7 @@ inline std::string ImGui::FileBrowser::ToLower(const std::string &s)
 
 inline void ImGui::FileBrowser::SetPwdUncatched(const std::filesystem::path &pwd)
 {
-    fileRecords_ = { FileRecord{ true, "..", "[D] ..", "" } };
+    fileRecords_ = { FileRecord{ true, "..", "..", "" } };
 
     for(auto &p : std::filesystem::directory_iterator(pwd))
     {
@@ -740,7 +740,8 @@ inline void ImGui::FileBrowser::SetPwdUncatched(const std::filesystem::path &pwd
         // Font Awesome icons:
         // Folder: \uF07C - open Folder : \uF07C
         //  File: \uF15B - File with text: \uF15C");
-        rcd.showName = (rcd.isDir ? "\uF07B " : "\uF15C ") +
+        using namespace std::literals::string_literals;
+        rcd.showName = (rcd.isDir ? u8StrToStr(u8"\uF07B ") : u8StrToStr("\uF15C ")) +
                        u8StrToStr(p.path().filename().u8string());
         fileRecords_.push_back(rcd);
     }
