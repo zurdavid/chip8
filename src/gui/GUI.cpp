@@ -9,8 +9,9 @@
 #include "../res/bindings/imgui_impl_glfw.h"
 #include "../res/bindings/imgui_impl_opengl3.h"
 
-
-using chip8::State, State::Paused, chip8::State::Running, chip8::State::Empty, chip8::State::Reset;
+namespace {
+    using chip8::State;
+}
 
 // translate state to possible action name
 const char* state_to_action_name(State t){
@@ -123,7 +124,7 @@ void GUI::display_menubar() {
             ImGui::EndMenu();
         }
         if (ImGui::BeginMenu("Chip8")) {
-            ImGui::BeginDisabled(state == Empty);
+            ImGui::BeginDisabled(state == State::Empty);
             if (ImGui::MenuItem(state_to_action_name(state), "Space")) { chip8.toggle_pause(); }
             ImGui::EndDisabled();
 
@@ -178,13 +179,13 @@ void GUI::display_control_window() {
     ImGui::Begin("call stack");
     const auto state = chip8.get_state();
 
-    ImGui::BeginDisabled( state != Paused && state != Reset);
+    ImGui::BeginDisabled( state != State::Paused && state != State::Reset);
     if (ImGui::Button("Execute instruction")) { chip8.exec_op_cycle(); }
     ImGui::EndDisabled();
 
     ImGui::SameLine();
 
-    ImGui::BeginDisabled(state == Empty);
+    ImGui::BeginDisabled(state == State::Empty);
     if (ImGui::Button(state_to_action_name(state))) { chip8.toggle_pause(); }
     ImGui::EndDisabled();
 
