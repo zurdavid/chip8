@@ -286,7 +286,7 @@ void GUI::display_memory_map() {
                 const auto idx = row * 16 + 2 * col;
                 const auto byte1 = mem[idx];
                 const auto byte2 = mem[idx + 1];
-                const auto word = gsl::narrow<u_int16_t>((byte1 << 8U) | byte2); // NOLINT
+                const auto word = gsl::narrow<uint16_t>((byte1 << 8U) | byte2); // NOLINT
                 ImGui::TableNextColumn();
                 MemText(word);
                 if (idx == chip8.get_pc()) {

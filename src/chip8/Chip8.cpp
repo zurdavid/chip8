@@ -55,7 +55,7 @@ namespace chip8 {
 
 
     void Chip8::load_rom(const std::string &filename) {
-        std::ifstream rom_file(filename);
+        std::ifstream rom_file(filename, std::ios::binary);
         if (rom_file) {
             rom_file >> std::noskipws;
             std::vector<uint8_t> rom((std::istream_iterator<uint8_t>(rom_file)),
