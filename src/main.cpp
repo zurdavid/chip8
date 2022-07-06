@@ -59,9 +59,11 @@ void glfwCleanup(GLFWwindow *window) {
 int main() {
     // Create window_ with graphics context
     static constexpr auto menu_height = 20;
-    static constexpr int zoom_factor = 20;
-    static constexpr auto width = chip8::Chip8::screen_width * zoom_factor;
-    static constexpr auto height = chip8::Chip8::screen_height * zoom_factor + menu_height;
+    static constexpr int start_zoom_factor = 20;
+    static constexpr auto width = chip8::Chip8::screen_width * start_zoom_factor;
+    static constexpr auto height = chip8::Chip8::screen_height * start_zoom_factor + menu_height;
+    float zoom_factor = start_zoom_factor;
+
     GLFWwindow *window = createWindow(width, height);
     if (window == nullptr) {
         return 1;
@@ -77,7 +79,7 @@ int main() {
     Shader shader("res/shaders/vertexShader.glsl", "res/shaders/fragmentShader.glsl");
 
     {
-        GUI imgui(window, chip8);
+        GUI imgui(window, chip8, zoom_factor);
 
         glfwSetWindowUserPointer(window, static_cast<void *>(&chip8));
         glfwSetKeyCallback(window, key_callback);
@@ -98,8 +100,8 @@ int main() {
             int display_w{};
             int display_h{};
             glfwGetFramebufferSize(window, &display_w, &display_h);
-            auto X = chip8::Chip8::screen_width * zoom_factor;
-            auto Y = chip8::Chip8::screen_height * zoom_factor;
+            auto X = static_cast<int>(chip8::Chip8::screen_width * zoom_factor);
+            auto Y = static_cast<int>(chip8::Chip8::screen_height * zoom_factor);
             auto x = (display_w - X) / 2;
             auto y = (display_h - Y - menu_height) / 2;
             glViewport(x, y, X, Y);

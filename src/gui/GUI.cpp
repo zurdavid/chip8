@@ -39,7 +39,9 @@ bool CallBackCheckbox(const char* label, bool* v, auto func) {
 }
 
 
-GUI::GUI(GLFWwindow *window, chip8::Chip8 &t_chip8) : window_(window), chip8(t_chip8) {
+GUI::GUI(GLFWwindow *window, chip8::Chip8 &t_chip8, float &t_zoom_factor)
+    : window_(window), chip8(t_chip8), zoom_factor(t_zoom_factor)
+{
     // Setup Dear ImGui context
     IMGUI_CHECKVERSION();
 
@@ -55,6 +57,8 @@ GUI::GUI(GLFWwindow *window, chip8::Chip8 &t_chip8) : window_(window), chip8(t_c
     config.MergeMode = true;
     io.Fonts->AddFontFromFileTTF("res/fonts/Font Awesome 6 Free-Regular-400.otf", fontsize, &config, ranges.data());
 
+    monospace = io.Fonts->AddFontFromFileTTF("res/fonts/DroidSansMono.ttf", fontsize);
+
     ImGui::StyleColorsDark();
 
     // Setup Platform/Renderer backends
@@ -63,10 +67,10 @@ GUI::GUI(GLFWwindow *window, chip8::Chip8 &t_chip8) : window_(window), chip8(t_c
     ImGui_ImplOpenGL3_Init(glsl_version);
 
     // file browser settings
-    fileDialog.SetTitle("Load Chip8-ROM...");
-    fileDialog.SetTypeFilters({ ".ch8" });
+    file_dialog.SetTitle("Load Chip8-ROM...");
+    file_dialog.SetTypeFilters({".ch8" });
     // TODO hardcoded path
-    fileDialog.SetPwd("roms");
+    file_dialog.SetPwd("roms");
 }
 
 
@@ -87,25 +91,26 @@ void GUI::build_context() {
     ImGui::ShowStyleEditor();
     ImGui::ShowFontSelector("change font");
 
-    fileDialog.Display();
+    file_dialog.Display();
     // TODO this is handling input - needs to be somewhere else
-    if (fileDialog.HasSelected()) {
+    if (file_dialog.HasSelected()) {
         // set window_ title
-        const auto title = fmt::format("Chip8 - {}", fileDialog.GetSelected().filename().string());
+        const auto title = fmt::format("Chip8 - {}", file_dialog.GetSelected().filename().string());
         glfwSetWindowTitle(window_, title.c_str());
         // load game
-        game_path = fileDialog.GetSelected().string();
+        game_path = file_dialog.GetSelected().string();
         chip8.load_rom(game_path);
-        auto readme_file = fileDialog.GetSelected().replace_extension(".txt").string();
+        auto readme_file = file_dialog.GetSelected().replace_extension(".txt").string();
         load_rom_readme(readme_file);
 
-        fileDialog.ClearSelected();
+        file_dialog.ClearSelected();
     }
 
     display_menubar();
     if (show_settings_window) { display_settings_window(); }
     if (show_control_window) { display_control_window(); }
     if (show_readme_window) { display_readme(); }
+    if (show_memory_window) { display_memory_map(); }
 
     // Rendering
     ImGui::Render();
@@ -119,7 +124,7 @@ void GUI::display_menubar() {
     ImGui::BeginMainMenuBar();
     {
         if (ImGui::BeginMenu("File")) {
-            if (ImGui::MenuItem("Open...", "Ctrl+O")) { fileDialog.Open(); }
+            if (ImGui::MenuItem("Open...", "Ctrl+O")) { file_dialog.Open(); }
             if (ImGui::MenuItem("Exit")) { glfwSetWindowShouldClose(window_, GLFW_TRUE); }
             ImGui::EndMenu();
         }
@@ -137,6 +142,7 @@ void GUI::display_menubar() {
         if (ImGui::BeginMenu("View")) {
             ImGui::MenuItem("Settings", nullptr,  &show_settings_window );
             ImGui::MenuItem("Control", nullptr, &show_control_window );
+            ImGui::MenuItem("Memory Map", nullptr, &show_memory_window );
             ImGui::EndMenu();
         }
         if (ImGui::BeginMenu("About")) {
@@ -151,6 +157,10 @@ void GUI::display_menubar() {
 
 void GUI::display_settings_window() {
     ImGui::Begin("Settings");
+
+    static constexpr auto min_zoom = 0.5F;
+    static constexpr auto max_zoom = 30.0F;
+    ImGui::SliderFloat("Zoom:", &zoom_factor, min_zoom, max_zoom);
 
     ImGui::Text("Number of instruction cycles per frame:");
     static constexpr auto max_cycles_per_frame = 500;
@@ -221,6 +231,73 @@ void GUI::display_control_window() {
     ImGui::Text("Sound Timer: %d", chip8.get_sound_timer());
     ImGui::EndChild();
 
+    ImGui::End();
+}
+
+// ImGui:: Display an opcode in hex with an on hover message, that
+// shows the corresponding assembler
+static void MemText(const uint16_t word)
+{
+    ImGui::TextUnformatted(fmt::format("{:04x}", word).c_str());
+    if (ImGui::IsItemHovered())
+    {
+
+        static constexpr auto max_tooltip_width  = 20.0F;
+        auto assembler = chip8::opcode_to_assembler(word);
+        ImGui::BeginTooltip();
+        ImGui::PushTextWrapPos(ImGui::GetFontSize() * max_tooltip_width);
+        ImGui::TextUnformatted(assembler.data());
+        ImGui::PopTextWrapPos();
+        ImGui::EndTooltip();
+    }
+}
+
+void GUI::display_memory_map() {
+    const auto &mem = chip8.get_memory();
+    static constexpr auto words_per_row = 8;
+    static constexpr auto rows = chip8::Chip8::mem_size / 16;
+
+    auto flags = ImGuiTableFlags_Borders // NOLINT enum
+               | ImGuiTableFlags_RowBg
+               | ImGuiTableFlags_SizingFixedFit
+               ;
+    ImGui::Begin("memory map");
+    ImGui::PushFont(monospace);
+    if (ImGui::BeginTable("test", words_per_row + 1, flags))
+    {
+        ImGui::TableSetupColumn("");
+        for (int i = 0; i < words_per_row; i++) {
+            ImGui::TableSetupColumn(fmt::format("{:04x}", i * 2).c_str());
+        }
+        ImGui::TableHeadersRow();
+
+        for (unsigned int row = 0; row < rows; row++)
+        {
+            if (row << 4U == chip8::Chip8::pc_start_address) {
+                ImGui::TableNextRow();
+                ImGui::TableNextColumn();
+                ImGui::Text("prog:");
+                ImGui::TableNextRow();
+            }
+            ImGui::TableNextColumn();
+            ImGui::Text("0x%04x", row << 4U);
+            for (unsigned int col = 0; col < words_per_row; col++)
+            {
+                const auto idx = row * 16 + 2 * col;
+                const auto byte1 = mem[idx];
+                const auto byte2 = mem[idx + 1];
+                const auto word = gsl::narrow<u_int16_t>((byte1 << 8U) | byte2); // NOLINT
+                ImGui::TableNextColumn();
+                MemText(word);
+                if (idx == chip8.get_pc()) {
+                    const ImU32 cell_bg_color = ImGui::GetColorU32(ImVec4(0.3F, 0.3F, 0.7F, 0.65F));
+                    ImGui::TableSetBgColor(ImGuiTableBgTarget_CellBg, cell_bg_color);
+                }
+            }
+        }
+        ImGui::EndTable();
+    }
+    ImGui::PopFont();
     ImGui::End();
 }
 
