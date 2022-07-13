@@ -1,6 +1,6 @@
 #include <catch2/catch.hpp>
 #include "utilities/Map.h"
-#include "chip8/InstructionSet.h"
+#include "chip8/OpcodeToString.h"
 
 TEST_CASE("constexpr opcodeAssemblyMap - simple", "[constexpr opcodeAssemblyMap]")
 {

@@ -1,7 +1,8 @@
 #include "utilities/Canvas.h"
-#include <GL/glew.h>
-#include <GLFW/glfw3.h>
+
 #include <array>
+
+#include <GL/glew.h>
 
 Canvas::Canvas() {
     static constexpr std::array<float, 4 * 5> vertices{
@@ -38,6 +39,7 @@ Canvas::Canvas() {
       1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), reinterpret_cast<void *>(3 * sizeof(float)));
     glEnableVertexAttribArray(1);
 }
+
 void Canvas::draw() const {
     glBindVertexArray(VAO);
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);

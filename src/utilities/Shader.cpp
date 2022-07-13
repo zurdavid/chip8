@@ -1,3 +1,5 @@
+#include "utilities/Shader.h"
+
 #include <fstream>
 
 #include <GL/glew.h>
@@ -6,7 +8,6 @@
 #include <glm/gtc/type_ptr.hpp>
 #include <spdlog/spdlog.h>
 
-#include "utilities/Shader.h"
 
 std::string getShaderSource(const char *shaderPath) {
     std::stringstream ss;

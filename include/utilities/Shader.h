@@ -2,6 +2,7 @@
 #define GL_LION_SHADER_H
 
 #include <string>
+
 #include <glm/glm.hpp>
 
 class Shader {

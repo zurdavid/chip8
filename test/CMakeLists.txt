@@ -19,7 +19,7 @@ endmacro()
 find_package(spdlog CONFIG REQUIRED)
 find_package(Microsoft.GSL)
 
-add_executable(tests tests.cpp internal_tests.cpp ../src/chip8/Chip8.cpp)
+add_executable(tests tests.cpp ../src/chip8/Chip8.cpp)
 target_link_libraries(tests
         PRIVATE
         project_warnings
@@ -38,6 +38,27 @@ target_include_directories(tests PUBLIC
         )
 
 TargetDisableClangTidy(tests)
+
+add_executable(integration_tests integration_tests.cpp ../src/chip8/Chip8.cpp)
+target_link_libraries(tests
+        PRIVATE
+        project_warnings
+        project_options
+        )
+
+target_link_system_libraries(integration_tests
+        PRIVATE
+        catch_main
+        spdlog::spdlog
+        Microsoft.GSL::GSL
+        )
+
+target_include_directories(integration_tests PUBLIC
+        ../include
+        )
+
+#TargetDisableClangTidy(integration_tests)
+
 
 # automatically discover tests that are defined in catch based test files you can modify the unittests. TEST_PREFIX to
 # whatever you want, or use different for different binaries

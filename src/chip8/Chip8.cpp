@@ -1,14 +1,18 @@
 #include "chip8/Chip8.h"
-#include <fstream>
-#include <iterator>
-#include <random>
+
 #include <algorithm>
 #include <bitset>
+#include <fstream>
 #include <functional>
-#include <gsl/narrow>
-#include "utilities/Map.h"
+#include <iterator>
+#include <random>
 #include <ranges>
+
+#include <gsl/narrow>
 #include <spdlog/spdlog.h>
+
+#include "utilities/Map.h"
+#include "chip8/InstructionPartAccessorFunctions.h"
 
 
 namespace chip8 {
@@ -54,7 +58,7 @@ namespace chip8 {
     }
 
 
-    void Chip8::load_rom(const std::string &filename) {
+    void Chip8::load_rom_from_file(const std::string &filename) {
         std::ifstream rom_file(filename, std::ios::binary);
         if (rom_file) {
             rom_file >> std::noskipws;
@@ -63,11 +67,15 @@ namespace chip8 {
             ranges::copy(rom, memory.begin() + program_start);
             program_size = rom.size();
             reset();
-            draw_flag = true;
         } else {
             // TODO give user error message
             spdlog::error("Could not open file: {}", filename);
         }
+    }
+
+
+    void Chip8::reset_rom() {
+        reset();
     }
 
 
@@ -81,44 +89,6 @@ namespace chip8 {
         tick_count++;
     }
 
-
-    namespace {
-    // get 4 bit starting with bit-position startbit
-    [[nodiscard]] constexpr uint16_t get4Bit(const uint16_t opcode, const uint16_t start_bit) {
-        constexpr auto mask = uint16_t{0xFU};
-        return (opcode >> start_bit) & mask;
-    }
-
-
-    // returns X in 0x_X__
-    [[nodiscard]] constexpr uint16_t X(uint16_t opcode) {
-        return get4Bit(opcode, 8);
-    }
-
-
-    // returns X in 0x__Y_
-    [[nodiscard]] constexpr uint16_t Y(uint16_t opcode) {
-        return get4Bit(opcode, 4);
-    }
-
-
-    // returns X in 0x___N
-    [[nodiscard]] constexpr uint16_t n(uint16_t opcode) {
-        return get4Bit(opcode, 0);
-    }
-
-    // returns X in 0x__NN
-    [[nodiscard]] constexpr uint8_t nn(uint16_t opcode) {
-        return gsl::narrow_cast<uint8_t>(opcode & 0xFFU);
-    }
-
-
-    // returns X in 0x_NNN
-    [[nodiscard]] constexpr uint16_t nnn(uint16_t opcode) {
-        constexpr auto mask = uint16_t{0xFFF};
-        return opcode & mask;
-    }
-}
 
     // clear screen
     void Chip8::op_clear_screen(uint16_t) { // NOLINT opcode is not needed
@@ -147,23 +117,23 @@ namespace chip8 {
     }
 
 
-    // Skips the next instruction if VX equals NN.
-    void Chip8::op_skip_ifeq(const uint16_t opcode) {
+    // Skips the next instruction if Vx equals NN.
+    void Chip8::op_skip_ifeq_vx_nn(uint16_t opcode) {
         if (V[X(opcode)] == nn(opcode)) {
             incPC();
         }
     }
 
 
-    // Skips the next instruction if VX does not equal NN.
-    void Chip8::op_skip_ifneq(uint16_t opcode) {
+    // Skips the next instruction if Vx does not equal NN.
+    void Chip8::op_skip_ifneq_vx_nn(uint16_t opcode) {
         if (V[X(opcode)] != nn(opcode)) {
             incPC();
         }
     }
 
 
-    // Skips the next instruction if VX equals VY.
+    // Skips the next instruction if Vx equals Vy.
     void Chip8::op_skip_ifeq_xy(uint16_t opcode) {
         if (V[X(opcode)] == V[Y(opcode)]) {
             incPC();
@@ -172,43 +142,43 @@ namespace chip8 {
 
 
     // 0x6xnn - Sets Vx to nn
-    void Chip8::ld_vx_nn(uint16_t opcode) {
+    void Chip8::op_ld_vx_nn(uint16_t opcode) {
         V[X(opcode)] = nn(opcode);
     }
 
 
-    // Adds NN to VX. (Carry flag is not changed)
-    void Chip8::op_add_nn(uint16_t opcode) {
+    // Adds NN to Vx. (Carry flag is not changed)
+    void Chip8::op_add_vx_nn(uint16_t opcode) {
         V[X(opcode)] += nn(opcode);
     }
 
 
-    // Sets VX to the value of VY.
-    void Chip8::op_assign(uint16_t opcode) {
+    // Sets Vx to the value of Vy.
+    void Chip8::op_ld_vx_vy(uint16_t opcode) {
         V[X(opcode)] = V[Y(opcode)];
     }
 
 
-    // Sets VX to VX or VY. (Bitwise OR operation)
-    void Chip8::op_or(uint16_t opcode) {
+    // Sets Vx to Vx or Vy. (Bitwise OR operation)
+    void Chip8::op_or_vx_vy(uint16_t opcode) {
         V[X(opcode)] |= V[Y(opcode)];
     }
 
 
-    // Sets VX to VX and VY. (Bitwise AND operation)
-    void Chip8::op_and(uint16_t opcode) {
+    // Sets Vx to Vx and Vy. (Bitwise AND operation)
+    void Chip8::op_and_vx_vy(uint16_t opcode) {
         V[X(opcode)] &= V[Y(opcode)];
     }
 
 
-    // Sets VX to VX xor VY. (Bitwise XOR operation)
-    void Chip8::op_xor(uint16_t opcode) {
+    // Sets Vx to Vx xor Vy. (Bitwise XOR operation)
+    void Chip8::op_xor_vx_vy(uint16_t opcode) {
         V[X(opcode)] ^= V[Y(opcode)];
     }
 
 
-    // 8XY4 - Adds VY to VX. VF is set to 1 when there's a carry, and to 0 when there is not.
-    void Chip8::op_add(uint16_t opcode) {
+    // 8XY4 - Adds Vy to Vx. VF is set to 1 when there's a carry, and to 0 when there is not.
+    void Chip8::op_add_vx_vy(uint16_t opcode) {
         const auto x = X(opcode);
         const auto y = Y(opcode);
         const auto vx = V[x];
@@ -217,8 +187,8 @@ namespace chip8 {
     }
 
 
-    // 8XY5 - VY is subtracted from VX. VF is set to 0 when there's a borrow, and 1 when there is not.
-    void Chip8::op_sub(uint16_t opcode) {
+    // 8XY5 - Vy is subtracted from Vx. VF is set to 0 when there's a borrow, and 1 when there is not.
+    void Chip8::op_sub_vx_vy(uint16_t opcode) {
         const auto x = X(opcode);
         const auto y = Y(opcode);
         const auto vx = V[x];
@@ -227,8 +197,8 @@ namespace chip8 {
     }
 
 
-    // Sets VX to VY minus VX. VF is set to 0 when there's a borrow, and 1 when there is not.
-    void Chip8::op_sub_rev(uint16_t opcode) {
+    // Sets Vx to Vy minus Vx. VF is set to 0 when there's a borrow, and 1 when there is not.
+    void Chip8::op_sub_vx_vy_minus_vx(uint16_t opcode) {
         const auto x = X(opcode);
         const auto y = Y(opcode);
         const auto vy = V[y];
@@ -237,9 +207,9 @@ namespace chip8 {
     }
 
 
-    // Store the value of register VY shifted right one bit in register VX¹
+    // Store the value of register Vy shifted right one bit in register Vx¹
     // Set register VF to the least significant bit prior to the shift
-    // VY is unchanged
+    // Vy is unchanged
     // Changed according to: https://github.com/mattmikolay/chip-8/wiki/CHIP%E2%80%908-Instruction-Set
     void Chip8::op_rshift(uint16_t opcode) {
         const auto x = X(opcode);
@@ -249,9 +219,9 @@ namespace chip8 {
     }
 
 
-    // Store the value of register VY shifted left one bit in register VX
+    // Store the value of register Vy shifted left one bit in register Vx
     // Set register VF to the most significant bit prior to the shift
-    // VY is unchanged
+    // Vy is unchanged
     // Changed according to: https://github.com/mattmikolay/chip-8/wiki/CHIP%E2%80%908-Instruction-Set
     void Chip8::op_lshift(uint16_t opcode) {
         const auto x = X(opcode);
@@ -261,7 +231,7 @@ namespace chip8 {
     }
 
 
-    // Skips the next instruction if VX does not equal VY.
+    // Skips the next instruction if Vx does not equal Vy.
     void Chip8::op_skip_ifneq_xy(uint16_t opcode) {
         if (V[X(opcode)] != V[Y(opcode)]) {
             incPC();
@@ -270,18 +240,18 @@ namespace chip8 {
 
 
     // Sets I to the address NNN.
-    void Chip8::op_set_i(uint16_t opcode) {
+    void Chip8::op_ld_i_nnn(uint16_t opcode) {
         I = nnn(opcode);
     }
 
 
     // Jumps to the address NNN plus V0.
-    void Chip8::op_goto_plus_reg(uint16_t opcode) {
+    void Chip8::op_goto_I_plus_v0(uint16_t opcode) {
         PC = nnn(opcode) + V[0];
     }
 
 
-    // Sets VX to the result of a bitwise and operation on a random number (Typically: 0 to 255) and NN.
+    // Sets Vx to the result of a bitwise and operation on a random number (Typically: 0 to 255) and NN.
     void Chip8::op_and_rand(uint16_t opcode) {
         std::uniform_int_distribution<int> distrib(0, xFF);
         const auto random_number = gsl::narrow_cast<uint8_t>(distrib(random_generator) & 0xFF);
@@ -290,7 +260,7 @@ namespace chip8 {
     }
 
 
-    // Draws a sprite at coordinate (VX, VY) that has a width of 8 pixels and a height of N+1 pixels.
+    // Draws a sprite at coordinate (Vx, Vy) that has a width of 8 pixels and a height of N+1 pixels.
     // Each row of 8 pixels is read as bit-coded starting from memory location I;
     // I value does not change after the execution of this instruction.
     // As described above, VF is set to 1 if any screen pixels are flipped
@@ -331,8 +301,8 @@ namespace chip8 {
     }
 
 
-    // Skips the next instruction if the key stored in VX is pressed.
-    void Chip8::op_keyop1(uint16_t opcode) {
+    // Skips the next instruction if the key stored in Vx is pressed.
+    void Chip8::op_skip_if_key_vx_pressed(uint16_t opcode) {
         const auto vx = get4Bit(V[X(opcode)], 0);
         if (keys[vx]) {
             incPC();
@@ -340,8 +310,8 @@ namespace chip8 {
     }
 
 
-    // Skips the next instruction if the key stored in VX is not pressed.
-    void Chip8::op_keyop2(uint16_t opcode) {
+    // Skips the next instruction if the key stored in Vx is not pressed.
+    void Chip8::op_skip_if_key_vx_not_pressed(uint16_t opcode) {
         const auto vx = get4Bit(V[X(opcode)], 0);
         if (!keys[vx]) {
             incPC();
@@ -349,16 +319,16 @@ namespace chip8 {
     }
 
 
-    // Sets VX to the value of the delay timer.
-    void Chip8::op_to_delay_timer(uint16_t opcode) {
+    // Sets Vx to the value of the delay timer.
+    void Chip8::op_ld_vx_delay_timer(uint16_t opcode) {
         V[X(opcode)] = delay_timer;
     }
 
 
-    // A key press is awaited, and then stored in VX.
+    // A key press is awaited, and then stored in Vx.
     // (should be a blocking operation. All instruction halted until next key event)
     // This implementations only simulates a blocking by not increasing the PC
-    void Chip8::op_get_key(uint16_t opcode) {
+    void Chip8::op_get_key_pressed(uint16_t opcode) {
         // check all keys
         for (std::size_t key_idx = 0; auto key_pressed: keys) {
             if (key_pressed) {
@@ -374,34 +344,34 @@ namespace chip8 {
     }
 
 
-    // Sets the delay timer to VX.
-    void Chip8::op_set_delay_timer(uint16_t opcode) {
+    // Sets the delay timer to Vx.
+    void Chip8::op_ld_delay_timer_vx(uint16_t opcode) {
         delay_timer = V[X(opcode)];
     }
 
 
-    // Sets the sound timer to VX.
-    void Chip8::op_set_sound_timer(uint16_t opcode) {
+    // Sets the sound timer to Vx.
+    void Chip8::op_ld_sound_timer_vx(uint16_t opcode) {
         sound_timer = V[X(opcode)];
     }
 
 
-    // Adds VX to I. VF is not affected.[
+    // Adds Vx to I. VF is not affected.[
     void Chip8::op_add_to_I(uint16_t opcode) {
         I += V[X(opcode)];
     }
 
 
     // 0xFX29 - Set I = location of sprite for digit Vx.
-    void Chip8::op_set_I_to_sprite_address(uint16_t opcode) {
+    void Chip8::op_set_I_to_digit_sprite_address(uint16_t opcode) {
         I = sprite_size * get4Bit(V[X(opcode)], 0);
     }
 
 
-    // Stores the binary-coded decimal representation of VX,
+    // Stores the binary-coded decimal representation of Vx,
     // with the most significant of three digits at the address in I,
     // the middle digit at I plus 1, and the least significant digit at I plus 2.
-    void Chip8::op_set_BCD(uint16_t opcode) {
+    void Chip8::op_vx_to_BCD(uint16_t opcode) {
         const auto vx = V[X(opcode)];
         memory[I] = vx / 100;
         memory[I + 1] = (vx % 100) / 10;
@@ -410,7 +380,7 @@ namespace chip8 {
 
 
     // FX55 - LD [I], Vx
-    // Stores V0 to VX (including VX) in memory starting at address I.
+    // Stores V0 to Vx (including Vx) in memory starting at address I.
     // I is set to I + X + 1 after operation --> see https://github.com/mattmikolay/chip-8/wiki/CHIP%E2%80%908-Instruction-Set
     void Chip8::op_regdump(uint16_t opcode) {
         const uint16_t x = X(opcode) + 1;
@@ -420,7 +390,7 @@ namespace chip8 {
 
 
     // FX65 - LD Vx, [I]
-    // Fills V0 to VX (including VX) with values from memory starting at address I.
+    // Fills V0 to Vx (including Vx) with values from memory starting at address I.
     // I is set to I + X + 1 after operation --> see https://github.com/mattmikolay/chip-8/wiki/CHIP%E2%80%908-Instruction-Set
     void Chip8::op_regload(uint16_t opcode) {
         const uint16_t x = X(opcode) + 1;
@@ -466,15 +436,15 @@ namespace chip8 {
     }
 
 
+    // make sure PC never points to a location bigger than the memory
     void Chip8::incPC() {
-        static constexpr uint16_t inc = 2;
-        PC += inc;
+        PC = gsl::narrow_cast<uint16_t>(std::min(PC + 2, mem_size - 2));
     }
 
 
     void Chip8::signal() {
         delay_timer = gsl::narrow_cast<uint8_t>(std::max(delay_timer - 1, 0));
-        sound_timer = gsl::narrow_cast<uint8_t >(std::max(sound_timer - 1, 0));
+        sound_timer = gsl::narrow_cast<uint8_t>(std::max(sound_timer - 1, 0));
     }
 
 
@@ -513,6 +483,7 @@ namespace chip8 {
 
         tick_count = 0;
         call_stack.clear();
+        draw_flag = true;
     }
 
 
@@ -576,6 +547,10 @@ namespace chip8 {
         ranges::copy(error_screen, display_buffer.begin());
         draw_flag = true;
         // display error
+    }
+
+    const std::array<uint8_t, Chip8::screen_height * 8> &Chip8::get_display_buffer() const {
+        return display_buffer;
     }
 
 

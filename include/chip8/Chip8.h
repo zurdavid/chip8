@@ -3,9 +3,10 @@
 #define CHIP8_CHIP8_H
 
 #include <array>
-#include <string>
 #include <stack>
-#include <bitset>
+#include <string>
+#include <vector>
+#include <algorithm>
 
 namespace chip8 {
 
@@ -28,7 +29,16 @@ class Chip8 {
 
     Chip8();
 
-    void load_rom(const std::string &filename);
+    void load_rom_from_file(const std::string &filename);
+
+    template<typename RangeT>
+    void load_rom(const RangeT &rom) {
+        std::ranges::copy(rom, memory.begin() + pc_start_address);
+        program_size = rom.size();
+        reset();
+    }
+
+    void reset_rom();
 
     /**
      * Execute one op cycle:
@@ -50,6 +60,12 @@ class Chip8 {
      * @return Chip8 display as an array
      */
     [[nodiscard]] std::array<uint8_t, screen_size> get_screen() const;
+    /**
+     * Reference to the display buffer. Every bit corresponds to a pixel, grouped by 8 in uint8.
+     *
+     * @return display buffer
+     */
+    [[nodiscard]] const std::array<uint8_t, screen_height * 8> &get_display_buffer() const;
     /**
      * Current state of the emulator.
      *
@@ -84,12 +100,12 @@ class Chip8 {
      * Choose implementation of shift operations
      *
      * There are differing interpretations of how the shift operations (8XY6, 8XYE) should be implemented:
-     * either shift the value of register VX or VY. Some Chip8 programs assume one or the other implementation.
+     * either shift the value of register Vx or Vy. Some Chip8 programs assume one or the other implementation.
      * This option allows to switch between implementations.
      *
      * See: https://github.com/mattmikolay/chip-8/wiki/CHIP%E2%80%908-Instruction-Set
      *
-     * @param shift_vy If true VY is shifted, otherwise VX.
+     * @param shift_vy If true Vy is shifted, otherwise Vx.
      */
     void set_shift_implementation(bool shift_vy);
 
@@ -108,7 +124,7 @@ class Chip8 {
     uint8_t delay_timer{};    // DT
     uint8_t sound_timer{};    // ST
 
-    std::array<uint8_t, 8 * 32> display_buffer{}; // NOLINT no overflow
+    std::array<uint8_t, 8 * screen_height> display_buffer{}; // NOLINT no overflow
 
     bool shift_implementation_vy = true;
     std::deque<uint16_t> call_stack;
@@ -124,55 +140,55 @@ class Chip8 {
     void op_return_from_subroutine(uint16_t opcode);
     void op_goto(uint16_t opcode);
     void op_call_subroutine(uint16_t opcode);
-    void op_skip_ifeq(uint16_t opcode);
-    void op_skip_ifneq(uint16_t opcode);
+    void op_skip_ifeq_vx_nn(uint16_t opcode);
+    void op_skip_ifneq_vx_nn(uint16_t opcode);
     void op_skip_ifeq_xy(uint16_t opcode);
-    void op_keyop1(uint16_t opcode);
-    void op_keyop2(uint16_t opcode);
-    void ld_vx_nn(uint16_t opcode);
-    void op_add_nn(uint16_t opcode);
-    void op_assign(uint16_t opcode);
-    void op_or(uint16_t opcode);
-    void op_and(uint16_t opcode);
-    void op_xor(uint16_t opcode);
-    void op_add(uint16_t opcode);
-    void op_sub(uint16_t opcode);
+    void op_skip_if_key_vx_pressed(uint16_t opcode);
+    void op_skip_if_key_vx_not_pressed(uint16_t opcode);
+    void op_ld_vx_nn(uint16_t opcode);
+    void op_add_vx_nn(uint16_t opcode);
+    void op_ld_vx_vy(uint16_t opcode);
+    void op_or_vx_vy(uint16_t opcode);
+    void op_and_vx_vy(uint16_t opcode);
+    void op_xor_vx_vy(uint16_t opcode);
+    void op_add_vx_vy(uint16_t opcode);
+    void op_sub_vx_vy(uint16_t opcode);
     void op_rshift(uint16_t opcode);
-    void op_sub_rev(uint16_t opcode);
+    void op_sub_vx_vy_minus_vx(uint16_t opcode);
     void op_lshift(uint16_t opcode);
     void op_skip_ifneq_xy(uint16_t opcode);
-    void op_set_i(uint16_t opcode);
-    void op_goto_plus_reg(uint16_t opcode);
+    void op_ld_i_nnn(uint16_t opcode);
+    void op_goto_I_plus_v0(uint16_t opcode);
     void op_and_rand(uint16_t opcode);
     void op_draw(uint16_t opcode);
-    void op_to_delay_timer(uint16_t opcode);
-    void op_get_key(uint16_t opcode);
-    void op_set_delay_timer(uint16_t opcode);
-    void op_set_sound_timer(uint16_t opcode);
+    void op_ld_vx_delay_timer(uint16_t opcode);
+    void op_get_key_pressed(uint16_t opcode);
+    void op_ld_delay_timer_vx(uint16_t opcode);
+    void op_ld_sound_timer_vx(uint16_t opcode);
     void op_add_to_I(uint16_t opcode);
-    void op_set_I_to_sprite_address(uint16_t opcode);
-    void op_set_BCD(uint16_t opcode);
+    void op_set_I_to_digit_sprite_address(uint16_t opcode);
+    void op_vx_to_BCD(uint16_t opcode);
     void op_regdump(uint16_t opcode);
     void op_regload(uint16_t opcode);
 
     static constexpr std::array<std::pair<uint16_t, MFP>, num_opcodes> operations{
         {
-            { 0x00E0, &Chip8::op_clear_screen }, { 0x00EE, &Chip8::op_return_from_subroutine },
-              { 0x1000, &Chip8::op_goto }, { 0x2000, &Chip8::op_call_subroutine },
-              { 0x3000, &Chip8::op_skip_ifeq }, { 0x4000, &Chip8::op_skip_ifneq },
-              { 0x5000, &Chip8::op_skip_ifeq_xy }, { 0x6000, &Chip8::ld_vx_nn },
-              { 0x7000, &Chip8::op_add_nn }, { 0x8000, &Chip8::op_assign },
-              { 0x8001, &Chip8::op_or }, { 0x8002, &Chip8::op_and }, { 0x8003, &Chip8::op_xor },
-              { 0x8004, &Chip8::op_add }, { 0x8005, &Chip8::op_sub }, { 0x8006, &Chip8::op_rshift },
-              { 0x8007, &Chip8::op_sub_rev }, { 0x800E, &Chip8::op_lshift },
-              { 0x9000, &Chip8::op_skip_ifneq_xy }, { 0xA000, &Chip8::op_set_i },
-              { 0xB000, &Chip8::op_goto_plus_reg }, { 0xC000, &Chip8::op_and_rand },
-              { 0xD000, &Chip8::op_draw }, { 0xE09E, &Chip8::op_keyop1 },
-              { 0xE0A1, &Chip8::op_keyop2 }, { 0xF007, &Chip8::op_to_delay_timer },
-              { 0xF00A, &Chip8::op_get_key }, { 0xF015, &Chip8::op_set_delay_timer },
-              { 0xF018, &Chip8::op_set_sound_timer }, { 0xF01E, &Chip8::op_add_to_I },
-              { 0xF029, &Chip8::op_set_I_to_sprite_address }, { 0xF033, &Chip8::op_set_BCD },
-              { 0xF055, &Chip8::op_regdump }, { 0xF065, &Chip8::op_regload },
+                { 0x00E0, &Chip8::op_clear_screen }, { 0x00EE, &Chip8::op_return_from_subroutine },
+                { 0x1000, &Chip8::op_goto }, { 0x2000, &Chip8::op_call_subroutine },
+                { 0x3000, &Chip8::op_skip_ifeq_vx_nn }, {0x4000, &Chip8::op_skip_ifneq_vx_nn },
+                { 0x5000, &Chip8::op_skip_ifeq_xy }, { 0x6000, &Chip8::op_ld_vx_nn },
+                { 0x7000, &Chip8::op_add_vx_nn }, {0x8000, &Chip8::op_ld_vx_vy },
+                { 0x8001, &Chip8::op_or_vx_vy }, {0x8002, &Chip8::op_and_vx_vy }, {0x8003, &Chip8::op_xor_vx_vy },
+                { 0x8004, &Chip8::op_add_vx_vy }, {0x8005, &Chip8::op_sub_vx_vy }, {0x8006, &Chip8::op_rshift },
+                { 0x8007, &Chip8::op_sub_vx_vy_minus_vx }, {0x800E, &Chip8::op_lshift },
+                { 0x9000, &Chip8::op_skip_ifneq_xy }, { 0xA000, &Chip8::op_ld_i_nnn },
+                { 0xB000, &Chip8::op_goto_I_plus_v0 }, {0xC000, &Chip8::op_and_rand },
+                { 0xD000, &Chip8::op_draw }, { 0xE09E, &Chip8::op_skip_if_key_vx_pressed },
+                { 0xE0A1, &Chip8::op_skip_if_key_vx_not_pressed }, {0xF007, &Chip8::op_ld_vx_delay_timer },
+                { 0xF00A, &Chip8::op_get_key_pressed }, {0xF015, &Chip8::op_ld_delay_timer_vx },
+                { 0xF018, &Chip8::op_ld_sound_timer_vx }, {0xF01E, &Chip8::op_add_to_I },
+                { 0xF029, &Chip8::op_set_I_to_digit_sprite_address }, {0xF033, &Chip8::op_vx_to_BCD },
+                { 0xF055, &Chip8::op_regdump }, { 0xF065, &Chip8::op_regload },
         }
     };
 };
