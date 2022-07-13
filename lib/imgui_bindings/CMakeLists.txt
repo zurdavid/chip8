@@ -19,8 +19,12 @@ macro(TargetDisableCppCheck target)
 endmacro()
 
 add_library(imgui_opengl OBJECT
-        imgui_impl_glfw.cpp
-        imgui_impl_opengl3.cpp
+        ${CMAKE_BINARY_DIR}/lib/imgui_bindings/imgui_impl_glfw.cpp
+        ${CMAKE_BINARY_DIR}/lib/imgui_bindings/imgui_impl_opengl3.cpp
+        )
+
+target_include_directories(imgui_opengl PUBLIC
+        ${CMAKE_BINARY_DIR}/lib/imgui_bindings/
         )
 
 target_compile_options(imgui_opengl PRIVATE -w)

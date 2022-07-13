@@ -14,5 +14,5 @@ ms-gsl/4.0.0
 cmake_find_package_multi
 
 [imports]
-./res/bindings, imgui_impl_glfw.* -> ../lib/imgui_bindings
-./res/bindings, imgui_impl_opengl3* -> ../lib/imgui_bindings
+./res/bindings, imgui_impl_glfw.* -> lib/imgui_bindings
+./res/bindings, imgui_impl_opengl3* -> lib/imgui_bindings
