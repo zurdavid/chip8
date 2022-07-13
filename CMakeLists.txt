@@ -56,8 +56,3 @@ dynamic_project_options(
 add_subdirectory(lib)
 add_subdirectory(src)
 add_subdirectory(test)
-
-add_custom_target(link_target ALL
-        COMMAND ${CMAKE_COMMAND} -E create_symlink ${CMAKE_SOURCE_DIR}/res ${CMAKE_BINARY_DIR}/bin/res
-        COMMAND ${CMAKE_COMMAND} -E create_symlink ${CMAKE_SOURCE_DIR}/test/test_roms ${CMAKE_BINARY_DIR}/test/test_roms
-        COMMAND ${CMAKE_COMMAND} -E create_symlink ${CMAKE_SOURCE_DIR}/roms ${CMAKE_BINARY_DIR}/bin/roms)

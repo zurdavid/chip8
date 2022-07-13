@@ -32,6 +32,15 @@ set_target_properties(chip8 PROPERTIES
         RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin"
         )
 
+IF((${CMAKE_SYSTEM_NAME} MATCHES "Windows"))
+    add_custom_command(TARGET chip8 POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/res ${CMAKE_BINARY_DIR}/bin/res)
+ELSE()
+    add_custom_command(TARGET chip8 POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E create_symlink ${CMAKE_SOURCE_DIR}/res ${CMAKE_BINARY_DIR}/bin/res
+        COMMAND ${CMAKE_COMMAND} -E create_symlink ${CMAKE_SOURCE_DIR}/roms ${CMAKE_BINARY_DIR}/bin/roms)
+ENDIF()
+
 add_subdirectory(utilities)
 add_subdirectory(chip8)
 add_subdirectory(gui)
