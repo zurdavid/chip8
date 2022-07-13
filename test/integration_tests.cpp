@@ -12,7 +12,7 @@ namespace chip8_tests {
     {
         chip8::Chip8 chip8;
         const auto rom = fs::path(roms_path).append("test_program.ch8");
-        chip8.load_rom_from_file(rom);
+        chip8.load_rom_from_file(rom.string());
 
         const auto start = chip8::Chip8::pc_start_address;
         REQUIRE(chip8.get_pc() == start);
@@ -25,8 +25,8 @@ namespace chip8_tests {
     TEST_CASE("execute several cycles")
     {
         chip8::Chip8 chip8;
-        const auto rom = fs::path(roms_path).append("test_program.ch8");
-        chip8.load_rom_from_file(rom);
+        const auto rom = fs::path(roms_path).append("test_program.ch8");      
+        chip8.load_rom_from_file(rom.string());
         chip8.toggle_pause();
 
         // first two operations create random numbers
