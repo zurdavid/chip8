@@ -65,7 +65,7 @@ class Chip8 {
      *
      * @return display buffer
      */
-    [[nodiscard]] const std::array<uint8_t, screen_height * 8> &get_display_buffer() const;
+    [[nodiscard]] const std::array<uint8_t, screen_height * 8> &get_display_buffer() const; // NOLINT
     /**
      * Current state of the emulator.
      *

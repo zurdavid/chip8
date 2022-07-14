@@ -549,7 +549,7 @@ namespace chip8 {
         // display error
     }
 
-    const std::array<uint8_t, Chip8::screen_height * 8> &Chip8::get_display_buffer() const {
+    const std::array<uint8_t, bytes_in_screen> &Chip8::get_display_buffer() const {
         return display_buffer;
     }
 

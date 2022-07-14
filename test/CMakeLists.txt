@@ -62,7 +62,7 @@ IF((${CMAKE_SYSTEM_NAME} MATCHES "Windows"))
     add_custom_command(TARGET integration_tests POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/test/test_roms ${CMAKE_BINARY_DIR}/test/test_roms)
 ELSE()
-    add_custom_command(TARGET chip8 POST_BUILD
+    add_custom_command(TARGET integration_tests POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E create_symlink ${CMAKE_SOURCE_DIR}/test/test_roms ${CMAKE_BINARY_DIR}/test/test_roms)
 ENDIF()
 
